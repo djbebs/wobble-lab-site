@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Interactive Jelly Physics Simulation | Wobble Lab</title>
+<meta name="description" content="Play with an interactive jelly soft-body physics simulation. Grab it, stretch it, squeeze it and watch it wobble. Runs live in your browser with WebGPU.">
+<link rel="canonical" href="https://wobblelab.example/jelly/">
+<meta name="robots" content="index,follow">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wobble Lab">
+<meta property="og:title" content="Interactive Jelly Physics Simulation | Wobble Lab">
+<meta property="og:description" content="Play with an interactive jelly soft-body physics simulation. Grab it, stretch it, squeeze it and watch it wobble. Runs live in your browser with WebGPU.">
+<meta property="og:url" content="https://wobblelab.example/jelly/">
+<meta property="og:image" content="https://wobblelab.example/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/site.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "/assets/vendor/three.webgpu.js",
+    "three/webgpu": "/assets/vendor/three.webgpu.js"
+  }
+}
+</script>
+<link rel="modulepreload" href="/assets/vendor/three.webgpu.js">
+<link rel="modulepreload" href="/assets/softbody.js">
+<script type="module" src="/assets/jelly.js"></script>
+</head>
+<body class="has-stage">
+<a class="skip" href="#main">Skip to content</a>
+<header class="bar">
+  <a class="brand" href="/">Wobble Lab</a>
+  <nav aria-label="Principal">
+      <a href="/">Home</a>
+      <a href="/jelly/" aria-current="page">Jelly</a>
+      <a href="/experiments/">Experiments</a>
+      <a href="/science/">Science</a>
+      <a href="/about/">About</a>
+  </nav>
+</header>
+<main id="main">
+
+<div class="stage" id="stage">
+  <div id="overlay">
+    <div class="row">
+      <div>
+        <p class="caps">Material study &nbsp;/&nbsp; <span id="studyid">No. 001</span></p>
+        <h2>Wobble<br><em>&amp; Rest.</em></h2>
+      </div>
+      <div id="live"><span id="dot"></span><span class="caps" id="backend">booting</span></div>
+    </div>
+  </div>
+
+  <div id="charge" aria-hidden="true">
+    <span class="caps" id="chargelabel">Keep hold</span>
+    <div id="chargetrack"><div id="chargefill"></div></div>
+  </div>
+
+  <button id="tab" aria-label="Show controls">Specimen</button>
+
+  <div id="panel">
+    <h3>The specimen</h3>
+    <div class="field">
+      <div class="lab"><span class="caps">Flavour</span></div>
+      <div id="flavours">
+        <button data-f="0" aria-pressed="true">Honey</button>
+        <button data-f="1" aria-pressed="false">Berry</button>
+        <button data-f="2" aria-pressed="false">Mint</button>
+        <button data-f="3" aria-pressed="false">Plum</button>
+      </div>
+    </div>
+    <div class="field">
+      <div class="lab"><span class="caps">Name</span></div>
+      <div id="names">
+        <button data-n="" aria-pressed="true">None</button>
+        <button data-n="Steven" aria-pressed="false">Steven</button>
+        <button data-n="Karen" aria-pressed="false">Karen</button>
+      </div>
+    </div>
+    <div class="field">
+      <div class="lab"><span class="caps">Firmness</span><span class="val" id="vFirm">0.34</span></div>
+      <input id="firm" type="range" min="0" max="1" step=".01" value=".34">
+    </div>
+    <div class="field">
+      <div class="lab"><span class="caps">Internal damping</span><span class="val" id="vDamp">0.28</span></div>
+      <input id="damp" type="range" min="0" max="1" step=".01" value=".28">
+    </div>
+    <button class="pbtn" id="nudge">Give it a nudge</button>
+    <button class="pbtn ghost" id="reset">Reset the specimen</button>
+    <div id="zoomrow">
+      <button id="zout" aria-label="Zoom out">&minus;</button>
+      <span class="caps">Zoom</span>
+      <button id="zin" aria-label="Zoom in">+</button>
+    </div>
+  </div>
+
+  <div id="fallback" hidden>
+    <div>
+      <p class="caps">Could not start</p>
+      <p>The simulation did not load. It needs WebGPU or WebGL2, and runs in current versions of
+      Chrome, Edge, Firefox and Safari on desktop and mobile. If you are on a very old browser or
+      a restricted network, that is the likely cause.</p>
+      <p>The <a href="/science/">articles</a> explain the physics it is modelling, and need no GPU at all.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// If the module never runs at all, nothing above catches it. Check for a flag.
+addEventListener("load", function () {
+  setTimeout(function () {
+    if (window.__jellyReady) return;
+    var f = document.getElementById("fallback"), s = document.getElementById("stage"),
+        b = document.getElementById("backend");
+    if (f) f.hidden = false;
+    if (s) s.classList.add("dead");
+    if (b) b.textContent = "unavailable";
+  }, 9000);
+});
+</script>
+
+<noscript>
+  <div class="wrap measure" style="padding:40px 0">
+    <p class="caps">JavaScript required</p>
+    <p>The simulation is solved live in your browser, so it needs JavaScript. The
+    <a href="/science/">articles</a> are plain text and work without it.</p>
+  </div>
+</noscript>
+
+<div class="adzone" id="adzone" hidden>
+  <span class="caps">Advertisement</span>
+  <div class="slot" id="adslot"></div>
+</div>
+
+<section>
+  <div class="wrap measure">
+    <p class="kicker">How to use it</p>
+    <h1>A soft solid you can push on.</h1>
+    <p class="lead">Grab it anywhere and pull. Use two fingers to stretch it from two points at
+    once. Let go and watch the wobble ring out. Hover near the right edge, or tap the tab, for
+    firmness and damping.</p>
+
+    <h2>What it is modelling</h2>
+    <p>A real gel is a sparse network of protein chains holding a great deal of water. Mechanically
+    that network does three things, and this specimen does the same three.</p>
+
+    <h3>It keeps its volume</h3>
+    <p>A gel is mostly water, and water will not compress. Squeezing a jelly would mean pushing
+    water out through pores far too fine to let it pass, so the volume stays put no matter how the
+    shape changes. The simulation enforces this directly: the enclosed volume is measured every step
+    and any deviation becomes a force pushing the surface back out.</p>
+    <p>This is the property that is easiest to get wrong and most obvious when it is missing. A
+    model that lets volume drift slowly deflates into a bag, however convincing the surface looks.</p>
+
+    <h3>It resists shear, but only just</h3>
+    <p>Sliding one layer past another only requires stretching the loose chains between junction
+    points, which is easy. A soft gel is something like a million times easier to shear than to
+    compress. Here, the resistance comes from springs along every edge of the mesh plus a constraint
+    that pulls the whole body back toward its rest shape.</p>
+
+    <h3>It loses energy on every cycle</h3>
+    <p>Jelly is viscoelastic: partly a spring, partly a damper. Without the damper it would oscillate
+    forever, which no real gel does. Each step here discards a small fraction of the velocity, which
+    is the same thing the loss modulus describes in a rheometer.</p>
+
+    <h2>What the two controls change</h2>
+    <table>
+      <tr><th>Control</th><th>Physical analogue</th><th>What you will see</th></tr>
+      <tr>
+        <td>Firmness</td>
+        <td>Shear modulus, the axis the <a href="/science/bloom/">Bloom test</a> probes</td>
+        <td>Firmer means a faster shear wave and a quicker, tighter wobble. Softer means it squashes
+        further under its own weight and stretches much more before springing back.</td>
+      </tr>
+      <tr>
+        <td>Internal damping</td>
+        <td>Loss modulus, the energy lost per cycle</td>
+        <td>Low values ring on for several seconds like a well-set dessert jelly. High values settle
+        almost at once, closer to a paste than a gel.</td>
+      </tr>
+    </table>
+
+    <p>Notice that they change different things. Firmness changes the frequency of the wobble.
+    Damping changes how long it lasts. In a real gel those are also separate properties, which is
+    why rheologists report both.</p>
+
+    <h2>The size effect</h2>
+    <p>Zoom out and the specimen looks smaller but wobbles at the same rate, because zooming only
+    moves the camera. In reality the frequency scales with the inverse of size: double the jelly and
+    the wobble roughly halves in frequency. A banquet jelly heaves slowly, a teaspoon of the same
+    mixture quivers fast, and nothing about the material has changed.
+    <a href="/science/wobble/">That scaling is worked through here.</a></p>
+
+    <h2>What it does not model</h2>
+    <p>No surface tension. At this scale it would change nothing visible: for a centimetre-sized gel
+    the length at which surface tension starts competing with elasticity comes out in the
+    micrometres. <a href="/science/blobs/">The blobs article explains why.</a></p>
+    <p>No fracture either. Pull a real jelly hard enough and it tears, permanently. This one
+    stretches and always recovers, which is convenient but not honest. Real gels have a strain at
+    which they fail, and that limit is a large part of what separates chewy from brittle.</p>
+    <p>No melting. A gelatin gel melts in the low thirties Celsius, below body temperature, which is
+    why it dissolves on the tongue. Temperature does not exist in this model at all.</p>
+
+    <h2>Read on</h2>
+    <p>Start with <a href="/science/gelatin/">what jelly actually is</a> for where the network comes
+    from, or <a href="/science/wobble/">why jelly wobbles</a> for the arithmetic behind the
+    frequency.</p>
+  </div>
+</section>
+
+</main>
+<footer class="bar foot">
+  <div>
+    <a href="/privacy/">Privacy</a>
+    <a href="/cookies/">Cookies</a>
+    <a href="/contact/">Contact</a>
+  </div>
+  <div class="muted">Interactive physics in the browser. Made in Switzerland.</div>
+</footer>
+<script type="module" src="/assets/ads.js"></script>
+</body>
+</html>

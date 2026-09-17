@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Why jelly wobbles and steel does not — Wobble Lab</title>
+<meta name="description" content="The wobble is a shear wave bouncing around inside the gel. Its speed, and therefore its frequency, follows from two numbers: stiffness and density.">
+<link rel="canonical" href="https://wobblelab.example/science/wobble/">
+<meta name="robots" content="index,follow">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wobble Lab">
+<meta property="og:title" content="Why jelly wobbles and steel does not — Wobble Lab">
+<meta property="og:description" content="The wobble is a shear wave bouncing around inside the gel. Its speed, and therefore its frequency, follows from two numbers: stiffness and density.">
+<meta property="og:url" content="https://wobblelab.example/science/wobble/">
+<meta property="og:image" content="https://wobblelab.example/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/site.css">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "Article", "headline": "Why jelly wobbles and steel does not", "description": "The wobble is a shear wave bouncing around inside the gel. Its speed, and therefore its frequency, follows from two numbers: stiffness and density.", "datePublished": "2026-09-15", "dateModified": "2026-09-15", "url": "https://wobblelab.example/science/wobble/", "publisher": {"@type": "Organization", "name": "Wobble Lab"}, "inLanguage": "en"}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="bar">
+  <a class="brand" href="/">Wobble Lab</a>
+  <nav aria-label="Principal">
+      <a href="/">Home</a>
+      <a href="/jelly/">Jelly</a>
+      <a href="/experiments/">Experiments</a>
+      <a href="/science/">Science</a>
+      <a href="/about/">About</a>
+  </nav>
+</header>
+<main id="main">
+
+<section>
+  <div class="wrap measure">
+    <p class="kicker">Soft matter &nbsp;/&nbsp; 03</p>
+    <h1>Why jelly wobbles and steel does not</h1>
+
+    <p class="lead">Steel rings. Jelly wobbles. The difference is not that one vibrates and the
+    other does not, it is that one vibrates far too fast to see.</p>
+
+    <h2>Two ways to deform something</h2>
+
+    <p>You can squeeze a material, changing its volume, or you can shear it, sliding one layer past
+    another without changing its volume at all. Materials resist these very differently, and gels
+    resist them about as differently as it is possible to.</p>
+
+    <p>A gel is mostly water, and water is nearly incompressible. Squeezing a jelly means forcing
+    water out through pores so fine that it will not go. So the resistance to compression, the bulk
+    modulus, is essentially that of water: a couple of gigapascals, comparable to many hard
+    materials.</p>
+
+    <p>Shearing is a completely different story. Sliding one layer past another only requires
+    stretching the loose chains between junction zones, and those are easy to stretch. The shear
+    modulus of a soft gel is measured in kilopascals. Published values vary widely with formulation,
+    but a soft dessert gel of order a few kilopascals is a reasonable picture.</p>
+
+    <blockquote>A jelly is roughly a million times easier to shear than to squeeze. That single
+    ratio is the whole story.</blockquote>
+
+    <h2>Shear waves at walking pace</h2>
+
+    <p>A wobble is a shear wave travelling through the gel, reflecting off the surfaces and coming
+    back. The speed of a shear wave depends on the shear modulus and the density:</p>
+
+    <pre><code>c = √(G / ρ)</code></pre>
+
+    <p>Put in numbers for a soft gel. Take a shear modulus of a few kilopascals and a density close
+    to water at a thousand kilograms per cubic metre. The square root of a few thousand over a
+    thousand is somewhere between one and two, so the wave travels at a metre or two per second,
+    about walking pace.</p>
+
+    <p>Now do the same for steel, with a shear modulus near eighty gigapascals and a density around
+    7,800. The square root of that ratio is a bit over three thousand metres per second.</p>
+
+    <p>So a shear wave crosses a ten-centimetre jelly in something like a tenth of a second, and a
+    ten-centimetre steel bar in thirty microseconds. The jelly oscillates a few times a second,
+    which is squarely inside the range your eye resolves. The steel oscillates tens of thousands of
+    times a second, which your eye cannot follow and your ear registers as a ring.</p>
+
+    <p>The jelly is not doing something exotic. It is doing the same thing, slowly enough to
+    watch.</p>
+
+    <h2>Why a big jelly wobbles more slowly</h2>
+
+    <p>The frequency of the fundamental mode depends on how long the wave takes to cross the object
+    and return, so it scales as the wave speed divided by the size:</p>
+
+    <pre><code>f  ∝  c / L  =  √(G / ρ) / L</code></pre>
+
+    <p>The consequence is worth stating plainly. <strong>Double the size of a jelly, made from the
+    same recipe, and the wobble frequency roughly halves.</strong> A large banquet jelly visibly
+    heaves. A teaspoon of the same mixture quivers quickly. Nothing about the material changed; only
+    the distance the wave has to travel did.</p>
+
+    <p>The same scaling explains why a firmer recipe wobbles faster. More gelatin means a higher
+    shear modulus, a faster wave, and a higher frequency for the same size.</p>
+
+    <h2>Why the wobble stops</h2>
+
+    <p>A purely elastic object would oscillate forever. Jelly does not, because it is viscoelastic:
+    partly a spring, partly a damper.</p>
+
+    <p>Rheologists split the response into two parts. The storage modulus, written G′, is the
+    elastic part, the energy stored and given back on each cycle. The loss modulus, G″, is the
+    viscous part, the energy converted to heat and never returned. Anything with G′ larger than G″
+    behaves as a solid; the crossover point where they are equal is used to define the moment a
+    cooling solution becomes a gel.</p>
+
+    <p>The ratio G″/G′ is called tan delta, and it is a direct measure of how quickly oscillations
+    die. A gel with a small tan delta rings on for several seconds. One with a large tan delta stops
+    almost immediately and feels more like a paste.</p>
+
+    <p>On the <a href="/jelly/">interactive jelly</a>, the internal damping control is exactly this
+    knob. Turn it down and the specimen keeps wobbling for a long time. Turn it up and it settles
+    almost at once. The firmness control changes the other term, the stiffness, which changes the
+    frequency rather than the decay.</p>
+
+    <h2>Why it holds its volume while it shakes</h2>
+
+    <p>Watch the wobble closely and the jelly changes shape constantly while its volume stays put.
+    That is the incompressibility again, and it is the reason the motion is a shear wave rather than
+    a pressure wave. Materials that cannot change volume have only one way to deform, and every
+    wobble you see is that one way, repeated.</p>
+
+    <p>This is also the hardest property to fake in a simulation. A model that lets volume drift
+    quietly collapses into a bag, however good the surface looks. The interactive specimen enforces
+    volume explicitly for exactly this reason.</p>
+
+    <p style="margin-top:56px"><a href="/science/">&larr; All articles</a></p>
+  </div>
+</section>
+
+<div class="adzone" id="adzone" hidden>
+  <span class="caps">Advertisement</span>
+  <div class="slot" id="adslot"></div>
+</div>
+
+</main>
+<footer class="bar foot">
+  <div>
+    <a href="/privacy/">Privacy</a>
+    <a href="/cookies/">Cookies</a>
+    <a href="/contact/">Contact</a>
+  </div>
+  <div class="muted">Interactive physics in the browser. Made in Switzerland.</div>
+</footer>
+<script type="module" src="/assets/ads.js"></script>
+</body>
+</html>

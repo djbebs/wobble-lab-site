@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Round blobs and flat puddles — Wobble Lab</title>
+<meta name="description" content="There is a length scale above which gravity beats surface tension. For water it is a few millimetres, and it explains the shape of every drop you have seen.">
+<link rel="canonical" href="https://wobblelab.example/science/blobs/">
+<meta name="robots" content="index,follow">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wobble Lab">
+<meta property="og:title" content="Round blobs and flat puddles — Wobble Lab">
+<meta property="og:description" content="There is a length scale above which gravity beats surface tension. For water it is a few millimetres, and it explains the shape of every drop you have seen.">
+<meta property="og:url" content="https://wobblelab.example/science/blobs/">
+<meta property="og:image" content="https://wobblelab.example/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/site.css">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "Article", "headline": "Round blobs and flat puddles", "description": "There is a length scale above which gravity beats surface tension. For water it is a few millimetres, and it explains the shape of every drop you have seen.", "datePublished": "2026-09-15", "dateModified": "2026-09-15", "url": "https://wobblelab.example/science/blobs/", "publisher": {"@type": "Organization", "name": "Wobble Lab"}, "inLanguage": "en"}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="bar">
+  <a class="brand" href="/">Wobble Lab</a>
+  <nav aria-label="Principal">
+      <a href="/">Home</a>
+      <a href="/jelly/">Jelly</a>
+      <a href="/experiments/">Experiments</a>
+      <a href="/science/">Science</a>
+      <a href="/about/">About</a>
+  </nav>
+</header>
+<main id="main">
+
+<section>
+  <div class="wrap measure">
+    <p class="kicker">Soft matter &nbsp;/&nbsp; 04</p>
+    <h1>Round blobs and flat puddles</h1>
+
+    <p class="lead">Small drops of water are round. Large ones are flat. The crossover is not
+    gradual and arbitrary; it happens at a specific size you can calculate from two properties of
+    the liquid.</p>
+
+    <h2>Two forces, pulling different ways</h2>
+
+    <p>Surface tension wants to minimise surface area, and the shape with the least surface area for
+    a given volume is a sphere. Gravity wants to lower the centre of mass, and the way to do that is
+    to spread out flat.</p>
+
+    <p>Which wins depends on size, and it depends on size because the two effects scale differently.
+    Surface energy grows with area, so with the square of the length. Gravitational energy grows
+    with volume times height, so with the fourth power. Make something bigger and gravity gains
+    faster. There must therefore be a size where they balance.</p>
+
+    <h2>The capillary length</h2>
+
+    <p>Setting the two against each other gives a length built from the surface tension, the
+    density and the strength of gravity:</p>
+
+    <pre><code>ℓc = √( γ / (ρ g) )</code></pre>
+
+    <p>For water at room temperature, with a surface tension around 0.072 newtons per metre, a
+    density of a thousand kilograms per cubic metre and gravity near 9.81, this works out at roughly
+    two and a half to three millimetres.</p>
+
+    <p>That number is worth holding onto, because you have been observing its consequences your
+    whole life. Dew drops, a few millimetres across, are convincingly round. A spilled glass of water
+    is a flat film. Mercury, which has a much higher surface tension, has a larger capillary length
+    and stays in visibly round beads at sizes where water would have spread.</p>
+
+    <blockquote>Nothing about water changes between the dew drop and the puddle. Only which of two
+    competing energies happens to be larger at that size.</blockquote>
+
+    <h2>Why a stream of water breaks into drops</h2>
+
+    <p>The same preference for less surface area explains something you can watch at any tap. A
+    smooth cylinder of falling water does not stay a cylinder. It develops a wobble along its
+    length, the wobble grows, and the stream pinches off into separate drops.</p>
+
+    <p>This is the Plateau-Rayleigh instability. A cylinder of liquid has more surface area than the
+    same volume divided into spheres, so surface tension actively drives the breakup. The wobble
+    grows fastest at a particular wavelength related to the diameter of the jet, which is why the
+    drops come out fairly evenly sized rather than at random.</p>
+
+    <p>It is also why a thin jet breaks up sooner than a thick one, and why the neck between two
+    forming drops thins to nothing rather than settling at some intermediate width.</p>
+
+    <h2>What changes when the blob is elastic</h2>
+
+    <p>A jelly is not a liquid, and it does not obey any of this in the same way.</p>
+
+    <p>A liquid drop resists gravity only through its surface. A gel resists through its whole
+    volume, because the network has a shear modulus. That is an enormously stronger effect at any
+    size above the very small, which is why a jelly turned out of its mould holds a shape with
+    corners on it, while the same volume of water would not hold a shape at all.</p>
+
+    <p>Comparing surface tension with elasticity gives another length, sometimes called the
+    elastocapillary length, roughly the surface tension divided by the shear modulus. For a
+    centimetre-scale jelly with a shear modulus in the kilopascals, that length comes out in the
+    micrometres. Surface tension is therefore completely irrelevant to the shape of a dessert jelly.
+    Elasticity does all of it.</p>
+
+    <p>This is why the <a href="/jelly/">interactive specimen</a> has no surface tension term at
+    all. At the scale being simulated it would change nothing you could see. What matters is the
+    network resisting shear and refusing to change volume, and those are the two rules the model
+    enforces.</p>
+
+    <h2>Where the two regimes meet</h2>
+
+    <p>Very soft gels at very small scales sit between the two descriptions, and that is an active
+    area of research. Surface tension can measurably round off the sharp corners of an extremely
+    soft gel, and the softer and smaller it is, the more liquid-like its shape becomes. The boundary
+    between a soft solid and a liquid, it turns out, is a matter of which length scale you are
+    looking at.</p>
+
+    <p style="margin-top:56px"><a href="/science/">&larr; All articles</a></p>
+  </div>
+</section>
+
+<div class="adzone" id="adzone" hidden>
+  <span class="caps">Advertisement</span>
+  <div class="slot" id="adslot"></div>
+</div>
+
+</main>
+<footer class="bar foot">
+  <div>
+    <a href="/privacy/">Privacy</a>
+    <a href="/cookies/">Cookies</a>
+    <a href="/contact/">Contact</a>
+  </div>
+  <div class="muted">Interactive physics in the browser. Made in Switzerland.</div>
+</footer>
+<script type="module" src="/assets/ads.js"></script>
+</body>
+</html>

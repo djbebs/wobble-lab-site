@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Experiments — Wobble Lab</title>
+<meta name="description" content="Interactive soft matter experiments in the browser: a stretchable jelly now, an elastic ball, a hanging sheet and a droplet to come.">
+<link rel="canonical" href="https://wobblelab.example/experiments/">
+<meta name="robots" content="index,follow">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wobble Lab">
+<meta property="og:title" content="Experiments — Wobble Lab">
+<meta property="og:description" content="Interactive soft matter experiments in the browser: a stretchable jelly now, an elastic ball, a hanging sheet and a droplet to come.">
+<meta property="og:url" content="https://wobblelab.example/experiments/">
+<meta property="og:image" content="https://wobblelab.example/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="bar">
+  <a class="brand" href="/">Wobble Lab</a>
+  <nav aria-label="Principal">
+      <a href="/">Home</a>
+      <a href="/jelly/">Jelly</a>
+      <a href="/experiments/" aria-current="page">Experiments</a>
+      <a href="/science/">Science</a>
+      <a href="/about/">About</a>
+  </nav>
+</header>
+<main id="main">
+
+<section>
+  <div class="wrap">
+    <p class="kicker">Index</p>
+    <h1>Experiments</h1>
+    <p class="lead measure">Each one isolates a single property of soft matter and lets you push on
+    it. Anything marked as planned genuinely does not exist yet; there is no page behind it.</p>
+
+    <div class="cards">
+      <a class="card" href="/jelly/">
+        <span class="tag">Live</span>
+        <h3>Jelly</h3>
+        <p>A slab that keeps its volume and resists shear. Change its firmness and its internal
+        damping and the wobble changes character.</p>
+      </a>
+      <div class="card soon">
+        <span class="tag">In progress</span>
+        <h3>Elastic ball</h3>
+        <p>The same material with almost no damping, to show what a gel would look like if it lost
+        no energy per bounce. No real gel behaves this way.</p>
+      </div>
+      <div class="card soon">
+        <span class="tag">Planned</span>
+        <h3>Hanging sheet</h3>
+        <p>A gel with no enclosed volume. Remove the internal pressure and only the network's
+        resistance to bending is left, which is a very different material.</p>
+      </div>
+      <div class="card soon">
+        <span class="tag">Planned</span>
+        <h3>Droplet and puddle</h3>
+        <p>A liquid blob scaled across the capillary length, so you can watch a round shape give way
+        to a flat one as it grows.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="adzone" id="adzone" hidden>
+  <span class="caps">Advertisement</span>
+  <div class="slot" id="adslot"></div>
+</div>
+
+<section>
+  <div class="wrap measure">
+    <h2>What they share</h2>
+    <p>All of them run on the same solver, which enforces three things a real gel also enforces:
+    volume is preserved, the network resists shear, and motion loses energy. Turning one experiment
+    into another means changing the shape and the numbers, not the physics.</p>
+  </div>
+</section>
+
+</main>
+<footer class="bar foot">
+  <div>
+    <a href="/privacy/">Privacy</a>
+    <a href="/cookies/">Cookies</a>
+    <a href="/contact/">Contact</a>
+  </div>
+  <div class="muted">Interactive physics in the browser. Made in Switzerland.</div>
+</footer>
+<script type="module" src="/assets/ads.js"></script>
+</body>
+</html>
