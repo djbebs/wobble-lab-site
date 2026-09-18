@@ -183,7 +183,7 @@ renderer.domElement.addEventListener("pointerdown", e => {
   if (!hit) return;
   const handle = body.grab(hit.point);
   if (!handle) return;
-  window.plausible?.("Jelly Click");
+  sendEvent("Jelly Click");
   const plane = new THREE.Plane();
   plane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(new THREE.Vector3()), hit.point);
   handles.set(e.pointerId, { handle, plane, target: hit.point.clone(), origin: hit.point.clone() });
@@ -394,17 +394,39 @@ function trackMotion(dt) {
   keSmoothed += (body.kineticEnergy() - keSmoothed) * KE_SMOOTH;
   if (!wobbling && keSmoothed > MOTION_ON) {
     wobbling = true; restFor = 0;
-    window.plausible?.("Jelly Oscillation");
+    sendEvent("Jelly Oscillation", { energy: keSmoothed });
   } else if (wobbling) {
     if (keSmoothed < MOTION_OFF) {
       restFor += dt;
-      if (restFor > REST_HOLD) { wobbling = false; window.plausible?.("Jelly Rest"); }
+      if (restFor > REST_HOLD) { wobbling = false; sendEvent("Jelly Rest"); }
     } else restFor = 0;
   }
 }
 
+/* --- performance analytics ---------------------------------------------
+   fpsSmoothed/frameMsSmoothed are EMAs sampled every 15s and sent as one
+   "Performance" event while the tab is visible. frameTimeMs is JS wall-clock
+   time per frame (physics + render + everything else on the main thread) —
+   a proxy for render cost, not a true GPU hardware timestamp: that needs the
+   WebGPU timestamp-query feature, which isn't requested at renderer.init()
+   above and has no Safari support. Fine for comparing relative performance
+   across pages/sessions, not for isolating GPU-only time. */
+let fpsSmoothed = 60, frameMsSmoothed = 16;
+function trackPerformance(dt) {
+  if (dt <= 0) return;
+  const fps = 1 / dt;
+  fpsSmoothed += (fps - fpsSmoothed) * .05;
+  frameMsSmoothed += (dt * 1000 - frameMsSmoothed) * .05;
+}
+setInterval(() => {
+  if (document.visibilityState === "visible") {
+    sendEvent("Performance", { fps: Math.round(fpsSmoothed), frameTimeMs: +frameMsSmoothed.toFixed(2) });
+  }
+}, 15000);
+
 function tick(dt) {
   trackMotion(dt);
+  trackPerformance(dt);
   haptics(performance.now());
 
   if (megaLeft > 0) {

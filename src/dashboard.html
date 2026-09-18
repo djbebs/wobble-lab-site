@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wobble Lab — Analytics</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
+<style>
+  /* A small design-token layer, not a styling system of its own — every
+     card/panel below is still built from Tailwind utilities in dashboard.js;
+     these tokens exist so that shared values (colors, the repeated card
+     treatment) live in one place instead of being retyped as a long Tailwind
+     class string on every one of the ~25 cards this page renders. */
+  :root {
+    --canvas:#0e1117; --card:#15181f; --border:#242832;
+    --accent:#1FA8C9; --text:#e5e7eb; --muted:#8b93a1;
+  }
+  body { background:var(--canvas); color:var(--text); }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:.5rem; padding:1rem; box-shadow:0 1px 2px rgba(0,0,0,.35); }
+  .card-header { font-size:.8125rem; font-weight:600; color:var(--text); padding-bottom:.6rem; margin-bottom:.85rem; border-bottom:1px solid var(--border); }
+  .stat-label { font-size:.6875rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:.35rem; }
+  .stat-value { font-size:1.875rem; font-weight:700; line-height:1; letter-spacing:-.01em; }
+  .stat-spark { height:28px; margin-top:.5rem; }
+  .section-title { font-size:.75rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:.75rem; padding-left:.5rem; border-left:3px solid var(--accent); }
+  .caption { font-size:.75rem; color:var(--muted); margin-bottom:.75rem; }
+  .range-btn { color:var(--muted); padding:.375rem .75rem; font-weight:500; }
+  .range-btn.active { background:var(--accent); color:#04222a; font-weight:700; }
+  select#sourceFilter { background:var(--card); border:1px solid var(--border); color:var(--text); border-radius:.375rem; padding:.375rem .6rem; font-size:.8125rem; }
+  table th, table td { white-space:nowrap; }
+  table th { font-size:.6875rem; text-transform:uppercase; letter-spacing:.04em; }
+  #worldMap { height:480px; border-radius:.375rem; }
+  .maplibregl-popup-content { background:var(--card); color:var(--text); border:1px solid var(--border); font:inherit; font-size:.75rem; }
+  .maplibregl-popup-tip { border-top-color:var(--card); border-bottom-color:var(--card); }
+</style>
+</head>
+<body class="min-h-screen font-sans">
+
+<div id="unlock" class="min-h-screen flex items-center justify-center px-4">
+  <form id="unlockForm" class="card w-full max-w-xs space-y-4">
+    <h1 class="text-lg font-semibold">Wobble Lab Analytics</h1>
+    <input id="keyInput" type="password" placeholder="Analytics key" autocomplete="off"
+      class="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 rounded-md py-2 text-sm font-medium transition">Unlock</button>
+    <p id="unlockError" class="text-red-400 text-xs hidden">Invalid key.</p>
+  </form>
+</div>
+
+<div id="app" class="hidden">
+
+  <header class="sticky top-0 z-10 bg-[#0e1117]/95 backdrop-blur border-b border-[var(--border)] px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <div class="text-[10px] uppercase tracking-wider text-[var(--muted)] font-semibold">Dashboard</div>
+      <h1 class="text-lg font-bold leading-tight">Wobble Lab Analytics</h1>
+    </div>
+    <div class="flex items-center gap-3 flex-wrap">
+      <div id="rangeButtons" class="flex bg-[var(--card)] border border-[var(--border)] rounded-md overflow-hidden text-sm">
+        <button data-days="7" class="range-btn">7d</button>
+        <button data-days="30" class="range-btn">30d</button>
+        <button data-days="90" class="range-btn">90d</button>
+      </div>
+      <select id="sourceFilter"><option value="all">All sources</option></select>
+      <button id="logoutBtn" class="text-xs text-[var(--muted)] hover:text-gray-200">Sign out</button>
+    </div>
+  </header>
+
+  <div class="max-w-7xl mx-auto px-4 py-8 space-y-10">
+
+    <!-- Every <section> below is a static, semantic wrapper only: title +
+         an empty row container. dashboard.js fills each row using the same
+         handful of component builders (kpiCard/chartPanel/tablePanel/
+         statCard), so no card markup is duplicated by hand in this file. -->
+
+    <section aria-labelledby="kpiTitle">
+      <h2 id="kpiTitle" class="section-title sr-only">Overview</h2>
+      <div id="kpiRow" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4"></div>
+    </section>
+
+    <section aria-labelledby="mapTitle">
+      <h2 id="mapTitle" class="section-title">World map</h2>
+      <div id="mapRow"></div>
+    </section>
+
+    <section aria-labelledby="trendsTitle">
+      <h2 id="trendsTitle" class="section-title">Trends</h2>
+      <div id="timeSeriesRow" class="grid md:grid-cols-2 gap-4"></div>
+    </section>
+
+    <section aria-labelledby="funnelTitle">
+      <h2 id="funnelTitle" class="section-title">TikTok &rarr; Jelly funnel</h2>
+      <div id="funnelStatsRow" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3"></div>
+      <p class="caption">Only "TikTok arrivals" and "Conversion rate" are attributed to a single visit (via a per-tab session id, never a cookie). The chart below is site-wide totals showing overall funnel shape.</p>
+      <div id="funnelChartRow"></div>
+    </section>
+
+    <section aria-labelledby="sourcesTitle">
+      <h2 id="sourcesTitle" class="section-title">Sources</h2>
+      <div id="sourcesRow" class="grid md:grid-cols-2 gap-4"></div>
+    </section>
+
+    <section aria-labelledby="topPagesTitle">
+      <h2 id="topPagesTitle" class="section-title">Top pages</h2>
+      <div id="topPagesRow" class="grid md:grid-cols-2 gap-4"></div>
+    </section>
+
+    <section aria-labelledby="physicsTitle">
+      <h2 id="physicsTitle" class="section-title">Jelly physics</h2>
+      <div id="physicsRow" class="grid md:grid-cols-3 gap-4"></div>
+    </section>
+
+    <section aria-labelledby="performanceTitle">
+      <h2 id="performanceTitle" class="section-title">Performance (WebGPU)</h2>
+      <p class="caption">"Frame time" is a JS-measured main-thread proxy (physics + render per frame), not a true GPU hardware timestamp — the WebGPU timestamp-query feature needed for that isn't enabled.</p>
+      <div id="performanceStatsRow" class="grid grid-cols-2 gap-4 mb-4"></div>
+      <div id="performanceChartsRow" class="grid md:grid-cols-2 gap-4"></div>
+    </section>
+
+    <section aria-labelledby="rawTitle">
+      <h2 id="rawTitle" class="section-title">Raw events (last 24h)</h2>
+      <div id="rawList" class="space-y-1"></div>
+    </section>
+
+  </div>
+</div>
+
+<script src="/assets/dashboard.js"></script>
+</body>
+</html>

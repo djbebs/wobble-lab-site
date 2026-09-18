@@ -1,13 +1,40 @@
 {
-  // Static-assets-only Worker. The served folder is public/, which contains
-  // nothing but the website: .git, README and this file sit outside it and can
-  // never be published by accident.
-  // "name" must match the Worker name in the Cloudflare dashboard.
-  "name": "wobble-lab-site",
-  "compatibility_date": "2026-09-15",
-  "assets": {
-    "directory": "./public/",
-    "html_handling": "auto-trailing-slash",
-    "not_found_handling": "404-page"
-  }
+	// src/worker.js handles POST /event and GET /analytics, then falls back to
+	// the static site in public/ via the ASSETS binding for everything else.
+	// public/ contains nothing but the website: .git, README and this file sit
+	// outside it and can never be published by accident.
+	// "name" must match the Worker name in the Cloudflare dashboard.
+	"name": "wobble-lab-site",
+	"compatibility_date": "2026-09-15",
+	"main": "src/worker.js",
+	"assets": {
+		"directory": "./public/",
+		"binding": "ASSETS",
+		"html_handling": "auto-trailing-slash",
+		"not_found_handling": "404-page",
+		// Without this, Cloudflare's asset layer intercepts browser navigations
+		// (requests with Sec-Fetch-Mode: navigate) to unmatched paths and serves
+		// the site's 404 page BEFORE the Worker ever runs — silently swallowing
+		// /dashboard, /event, /analytics etc. for real page loads (fetch()/curl
+		// requests don't carry that header, so they were never affected, which
+		// is exactly what made this invisible to curl-based testing).
+		"run_worker_first": true
+	},
+	"kv_namespaces": [
+		{
+			"binding": "ANALYTICS",
+			// Replace with the id `wrangler kv namespace create ANALYTICS` prints,
+			// or the id shown after creating it manually in the dashboard.
+			"id": "913e97bf0f3f48bfa4a6b38e525a7db0"
+		}
+	],
+	// Daily rollup: aggregates the last 24h of raw events into one
+	// rollup:YYYY-MM-DD record and prunes raw events older than 48h.
+	"triggers": {
+		"crons": ["0 0 * * *"]
+	},
+	// dashboard.html is imported as a raw string in worker.js, not built.
+	"rules": [
+		{ "type": "Text", "globs": ["**/*.html"], "fallthrough": true }
+	]
 }
