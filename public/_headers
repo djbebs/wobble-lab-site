@@ -1,6 +1,20 @@
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
+# The dashboard is under active development and its filenames never change
+# between deploys, unlike the rest of /assets/ which is effectively static.
+# The immutable rule above would otherwise have browsers (and Cloudflare's
+# edge) keep serving a stale copy for up to a year after every fix. These
+# more specific rules are listed after the general one so they win for
+# these exact paths; "no-cache" still allows caching, it just forces a
+# revalidation round-trip (a fast 304 when unchanged) instead of trusting
+# a year-old copy blindly.
+/assets/dashboard.js
+  Cache-Control: no-cache
+
+/assets/analytics.js
+  Cache-Control: no-cache
+
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
