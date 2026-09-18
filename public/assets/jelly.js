@@ -183,6 +183,7 @@ renderer.domElement.addEventListener("pointerdown", e => {
   if (!hit) return;
   const handle = body.grab(hit.point);
   if (!handle) return;
+  window.plausible?.("Jelly Click");
   const plane = new THREE.Plane();
   plane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(new THREE.Vector3()), hit.point);
   handles.set(e.pointerId, { handle, plane, target: hit.point.clone(), origin: hit.point.clone() });
@@ -377,7 +378,33 @@ function megaOff() {
   lastLabel = "";
 }
 
+/* --- oscillation / rest analytics -------------------------------------------
+   kineticEnergy() approximates mean-square vertex velocity. Measured live: an
+   active wobble ranges roughly 0.5-10 right after release, decaying through
+   it; settled floor-contact jitter never reaches zero and keeps blipping as
+   high as ~0.01. A raw instantaneous reading would make "0.5s continuously
+   below threshold" nearly unreachable, so ke is smoothed with an exponential
+   moving average first — a single noisy frame near the floor bounce can no
+   longer reset the rest timer or falsely trigger oscillation. Hysteresis (a
+   lower "off" threshold than "on") plus the hold delay give the smoothing a
+   moment to settle before "Jelly Rest" fires. */
+const MOTION_ON = .05, MOTION_OFF = .008, REST_HOLD = .6, KE_SMOOTH = .12;
+let wobbling = false, restFor = 0, keSmoothed = 0;
+function trackMotion(dt) {
+  keSmoothed += (body.kineticEnergy() - keSmoothed) * KE_SMOOTH;
+  if (!wobbling && keSmoothed > MOTION_ON) {
+    wobbling = true; restFor = 0;
+    window.plausible?.("Jelly Oscillation");
+  } else if (wobbling) {
+    if (keSmoothed < MOTION_OFF) {
+      restFor += dt;
+      if (restFor > REST_HOLD) { wobbling = false; window.plausible?.("Jelly Rest"); }
+    } else restFor = 0;
+  }
+}
+
 function tick(dt) {
+  trackMotion(dt);
   haptics(performance.now());
 
   if (megaLeft > 0) {
