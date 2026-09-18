@@ -1,0 +1,13 @@
+{
+  // Static-assets-only Worker. The served folder is public/, which contains
+  // nothing but the website: .git, README and this file sit outside it and can
+  // never be published by accident.
+  // "name" must match the Worker name in the Cloudflare dashboard.
+  "name": "wobble-lab-site",
+  "compatibility_date": "2026-09-15",
+  "assets": {
+    "directory": "./public/",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  }
+}
