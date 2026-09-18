@@ -276,19 +276,31 @@
   }
 
   /* --------------------------------------------------------------- map */
-  /* MapLibre GL. The basemap is CARTO's free "Dark Matter" vector style —
-     the style JSON CARTO publishes specifically for un-keyed MapLibre/
-     Mapbox GL use (basemaps.cartocdn.com/gl/*), distinct from and NOT the
-     same thing as their raster XYZ tile endpoint (basemaps.cartocdn.com/
-     dark_all/...), which now watermarks "API KEY REQUIRED" — that was the
-     wrong endpoint, tried first, and is not used here. Circles are a
-     GeoJSON "circle" layer, radius and color driven by data expressions —
-     MapLibre's native way to do this, rather than one DOM marker per
-     point. Aggregated to one dot per (event type, country): a per-city
-     view is possible from the same rollup.mapPoints data, but this
-     panel's brief calls for country-level. */
+  /* MapLibre GL. Basemap is Esri's free "World Dark Gray Base" tile
+     service — plain raster JPEGs served over CloudFront, no key, verified
+     directly (curl on the actual tile, not just a style manifest — CARTO's
+     dark-matter-gl-style *manifest* returns a clean 200 but the real tiles
+     behind it are watermarked "API KEY REQUIRED" in the browser, which is
+     what shipped here first and had to be replaced). Circles are a GeoJSON
+     "circle" layer, radius/color driven by data expressions — MapLibre's
+     native way to do this, rather than one DOM marker per point.
+     Aggregated to one dot per (event type, country): a per-city view is
+     possible from the same rollup.mapPoints data, but this panel's brief
+     calls for country-level. */
 
-  var MAP_STYLE_URL = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
+  var MAP_STYLE = {
+    version: 8,
+    sources: {
+      "esri-dark-gray": {
+        type: "raster",
+        // Esri's tile path order is z/y/x, not the more common z/x/y.
+        tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"],
+        tileSize: 256,
+        attribution: "Esri, HERE, Garmin, FAO, NOAA, USGS — © OpenStreetMap contributors"
+      }
+    },
+    layers: [{ id: "esri-dark-gray-layer", type: "raster", source: "esri-dark-gray" }]
+  };
 
   function emptyFC() { return { type: "FeatureCollection", features: [] }; }
 
@@ -319,7 +331,7 @@
 
   function initMap() {
     if (map || typeof maplibregl === "undefined") return;
-    map = new maplibregl.Map({ container: "worldMap", style: MAP_STYLE_URL, center: [0, 20], zoom: 1.2 });
+    map = new maplibregl.Map({ container: "worldMap", style: MAP_STYLE, center: [0, 20], zoom: 1.2 });
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
 
     map.on("load", function () {
