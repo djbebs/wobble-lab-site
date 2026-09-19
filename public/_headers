@@ -3,8 +3,8 @@
 # one, it gets appended onto it (confirmed live: /assets/dashboard.js came
 # back as "immutable, no-cache" when /assets/* and a specific override both
 # matched). So the long-cache rule below only lists paths that genuinely are
-# static between deploys; dashboard.js/analytics.js are listed separately
-# with no-cache and are deliberately NOT covered by any /assets/* glob.
+# static between deploys; runtime clients are listed separately with no-cache
+# and are deliberately NOT covered by any /assets/* glob.
 
 /assets/site.css
   Cache-Control: public, max-age=31536000, immutable
@@ -13,9 +13,6 @@
   Cache-Control: public, max-age=31536000, immutable
 
 /assets/softbody.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/assets/ads.js
   Cache-Control: public, max-age=31536000, immutable
 
 /assets/favicon.svg
@@ -27,8 +24,11 @@
 /assets/vendor/*
   Cache-Control: public, max-age=31536000, immutable
 
-# Dashboard files are under active development, share the same filenames
-# across every deploy, and are not covered by any of the rules above.
+# Runtime clients share the same filenames across every deploy and are not
+# covered by any of the immutable rules above.
+/assets/ads.js
+  Cache-Control: no-cache
+
 /assets/dashboard.js
   Cache-Control: no-cache
 

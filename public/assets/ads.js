@@ -1,40 +1,71 @@
-/* Shared advertising loader.
-   One slot, in the page flow, loaded after the page has settled, collapsing to
-   nothing when it cannot be filled. No interstitials, no vignettes, and Auto Ads
-   must stay switched off in the AdSense console: Auto Ads injects its own
-   overlays and would undo the no-overlap guarantee. */
+/*
+  Shared controller for the manual, in-flow AdSense units. The AdSense loader
+  lives in every page's <head>; this module creates units only after that
+  loader is ready. Keep Auto Ads disabled so no ad can overlap the simulation.
+*/
 const ADS = {
   enabled: true,
-  client: "ca-pub-0000000000000000",   // <-- your AdSense publisher ID
-  slot:   "0000000000",                // <-- your display unit ID
+  client: "ca-pub-1855350767840503", // Keep in sync with the publisher ID in every page head.
+  slot: "0000000000",                // Replace with the display-ad unit ID.
   delayMs: 1200,
   fillTimeoutMs: 6000
 };
 
-const zone = document.getElementById("adzone");
-const slot = document.getElementById("adslot");
+const CLIENT_PATTERN = /^ca-pub-\d{16}$/;
+const SLOT_PATTERN = /^\d{10}$/;
+const PLACEHOLDER_CLIENT = /^ca-pub-0+$/;
+const PLACEHOLDER_SLOT = /^0+$/;
 
-function collapse(why) {
-  console.info("[ads] collapsed:", why);
-  if (zone) zone.hidden = true;
-  if (slot) slot.innerHTML = "";
+const units = Array.from(document.querySelectorAll("[data-ad-zone]"))
+  .map(zone => ({ zone, slot: zone.querySelector("[data-ad-slot]") }))
+  .filter(unit => unit.slot);
+
+function log(message) {
+  console.info("[ads] " + message);
 }
 
-function start() {
-  if (!zone || !slot) return;
-  if (new URLSearchParams(location.search).has("noads")) return;
-  if (!ADS.enabled) return;
+function collapse(unit, reason) {
+  log("collapsed: " + reason);
+  unit.zone.hidden = true;
+  unit.slot.replaceChildren();
+  unit.slot.classList.remove("dev");
+}
 
-  if (/^ca-pub-0+$/.test(ADS.client) || /^0+$/.test(ADS.slot)) {
-    // Reserved space made visible during development. No request is ever sent
-    // with placeholder identifiers.
-    slot.classList.add("dev");
-    slot.textContent = "Ad slot reserved";
-    zone.hidden = false;
-    return;
+function showDevelopmentPlaceholder(unit) {
+  unit.zone.hidden = false;
+  unit.slot.classList.add("dev");
+  unit.slot.textContent = "Ad unit reserved";
+}
+
+function hasConfiguredIds() {
+  return CLIENT_PATTERN.test(ADS.client) && SLOT_PATTERN.test(ADS.slot) &&
+    !PLACEHOLDER_CLIENT.test(ADS.client) && !PLACEHOLDER_SLOT.test(ADS.slot);
+}
+
+function getLoader() {
+  const loader = document.getElementById("adsense-loader");
+  if (!loader) return null;
+
+  try {
+    const client = new URL(loader.src, location.href).searchParams.get("client");
+    return client === ADS.client ? loader : null;
+  } catch (error) {
+    return null;
   }
+}
 
-  zone.hidden = false;
+function waitForLoader(loader) {
+  if (window.adsbygoogle) return Promise.resolve();
+
+  return new Promise((resolve, reject) => {
+    loader.addEventListener("load", resolve, { once: true });
+    loader.addEventListener("error", () => reject(new Error("loader failed")), { once: true });
+  });
+}
+
+function initialise(unit) {
+  if (unit.zone.dataset.adsInitialised === "true") return;
+
   const ins = document.createElement("ins");
   ins.className = "adsbygoogle";
   ins.style.cssText = "display:block;width:100%";
@@ -42,26 +73,45 @@ function start() {
   ins.dataset.adSlot = ADS.slot;
   ins.dataset.adFormat = "horizontal";
   ins.dataset.fullWidthResponsive = "true";
-  slot.appendChild(ins);
 
-  const sc = document.createElement("script");
-  sc.async = true;
-  sc.crossOrigin = "anonymous";
-  sc.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" +
-           encodeURIComponent(ADS.client);
-  sc.onerror = () => collapse("script blocked or failed");
-  sc.onload = () => {
-    try { (window.adsbygoogle = window.adsbygoogle || []).push({}); }
-    catch (e) { collapse("push failed: " + e.message); }
-  };
-  document.head.appendChild(sc);
+  unit.slot.replaceChildren(ins);
+  unit.slot.classList.remove("dev");
+  unit.zone.hidden = false;
+  unit.zone.dataset.adsInitialised = "true";
 
-  // Unfilled units report it on the element. Collapsing those is the documented
-  // behaviour, not ad hiding.
+  try {
+    (window.adsbygoogle = window.adsbygoogle || []).push({});
+  } catch (error) {
+    collapse(unit, "push failed: " + error.message);
+    return;
+  }
+
   setTimeout(() => {
-    if (zone.hidden) return;
-    if (ins.dataset.adStatus === "unfilled" || ins.offsetHeight < 8) collapse("unfilled");
+    if (!ins.isConnected || unit.zone.hidden) return;
+    if (ins.dataset.adStatus === "unfilled" || ins.offsetHeight < 8) {
+      collapse(unit, "unfilled");
+    }
   }, ADS.fillTimeoutMs);
+}
+
+function start() {
+  if (!ADS.enabled || !units.length) return;
+  if (new URLSearchParams(location.search).has("noads")) return;
+
+  if (!hasConfiguredIds()) {
+    units.forEach(showDevelopmentPlaceholder);
+    return;
+  }
+
+  const loader = getLoader();
+  if (!loader) {
+    units.forEach(unit => collapse(unit, "missing or mismatched loader"));
+    return;
+  }
+
+  waitForLoader(loader)
+    .then(() => units.forEach(initialise))
+    .catch(() => units.forEach(unit => collapse(unit, "loader failed")));
 }
 
 setTimeout(start, ADS.delayMs);

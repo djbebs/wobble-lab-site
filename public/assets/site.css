@@ -70,6 +70,7 @@ th{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute
 /* encart publicitaire: toujours dans le flux, jamais par-dessus le contenu */
 .adzone{border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);
   padding:14px 0;margin:0;text-align:center;background:rgba(255,255,255,.3)}
+.stage + .adzone{margin-top:160px}
 .adzone[hidden]{display:none}
 .adzone .caps{display:block;font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;
   color:var(--muted);margin-bottom:8px}

@@ -60,15 +60,19 @@ dashboard, or you deploy to a different Worker.
 | `https://wobblelab.example` | `ORIGIN` in the build scripts, then rebuild | your real domain |
 | `Wobble Lab` | `SITE` in the build scripts | your final name, once domain and trademark are checked |
 | `hello@your-domain.example` | `public/contact/` | a working mailbox on your own domain |
-| `ca-pub-0000000000000000` | `public/assets/ads.js` | your AdSense publisher ID |
+| `ca-pub-1855350767840503` | `public/assets/ads.js` and every public HTML `<head>` | configured AdSense publisher ID |
 | `0000000000` | `public/assets/ads.js` | your AdSense display unit ID |
 
-While the AdSense identifiers are placeholders, no ad request is ever sent. The
-slot shows a reserved space so you can see the layout.
+The publisher ID must be updated in both `public/assets/ads.js` and each
+`<script id="adsense-loader">` URL so the loader and manual units agree. While
+either identifier is a placeholder, `ads.js` creates no manual ad unit; it shows
+a clearly labelled reserved space instead.
 
 ## Missing on purpose
 
-- **`ads.txt`** cannot be written until you have a publisher ID. One line, in `public/`.
+- **`ads.txt`** cannot be written until you have a publisher ID. Once it is
+  available, add `google.com, pub-YOUR_PUBLISHER_ID, DIRECT, f08c47fec0942fa0`
+  as one line in `public/ads.txt`.
 - **Consent banner**: use Google's own certified CMP, switched on from the
   AdSense console. It loads with the ad tag. Do not hand-roll one.
 - **`og.png`**: a 1200x630 social preview image is referenced but not created.
@@ -79,6 +83,8 @@ slot shows a reserved space so you can see the layout.
 
 - Turn on **Auto Ads**. It injects overlays and vignettes and would undo the
   guarantee that advertising never covers the simulation.
+- Place an ad in, over, or immediately beside the interactive stage controls.
+  The Jelly unit stays in normal flow with a 160px buffer below the stage.
 - Apply to AdSense before the content is genuinely in place. A rejection costs weeks.
 
 ## Adding an experiment
