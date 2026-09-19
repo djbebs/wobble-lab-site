@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { WebGPURenderer } from "three/webgpu";
 import { SoftBody, shapes } from "/assets/softbody.js";
-import { createJellyMaterial } from "/assets/jelly-shader.js";
+import { createJellyMaterial } from "/assets/jelly-shader.js?variant=colors-v3";
 
 const $ = id => document.getElementById(id);
 const ELASTIC_MODE = location.pathname.startsWith("/elastic-ball/");
@@ -154,6 +154,8 @@ const jellyMaterial = createJellyMaterial({
   restPositions: body.positions,
   preset: ELASTIC_MODE ? ELASTIC_PRESET : undefined
 });
+let selectedFlavour = 1; // Mint is the default palette entry.
+let selectedName = "none";
 const mat = jellyMaterial.material;
 const jelly = new THREE.Mesh(geo, mat);
 jelly.frustumCulled = false;
@@ -252,10 +254,15 @@ $("damp").oninput = e => applyDamping(+e.target.value);
 applyFirmness(+$("firm").value);
 applyDamping(+$("damp").value);
 
+function applyAppearance() {
+  jellyMaterial.setAppearance(selectedFlavour, selectedName);
+}
 for (const b of document.querySelectorAll("#flavours button")) b.onclick = () => {
   for (const o of document.querySelectorAll("#flavours button")) o.setAttribute("aria-pressed", String(o === b));
-  jellyMaterial.setFlavour(+b.dataset.f);
+  selectedFlavour = +b.dataset.f;
+  applyAppearance();
 };
+applyAppearance();
 $("nudge").onclick = () => {
   body.impulse({ x: (Math.random() - .5) * 1.9, y: 2.4, z: (Math.random() - .5) * 1.9 }, .5);
   navigator.vibrate?.(12);
@@ -321,9 +328,11 @@ const NAME_SLOT = $("studyid");
 let specimenName = null;
 function setName(n) {
   specimenName = n;
+  selectedName = n ? n.toLowerCase() : "none";
   NAME_SLOT.textContent = n ? n : "No. 001";
   for (const b of document.querySelectorAll("#names button"))
     b.setAttribute("aria-pressed", String(b.dataset.n === (n || "")));
+  jellyMaterial.setNamePreset(selectedName);
 }
 for (const b of document.querySelectorAll("#names button"))
   b.onclick = () => setName(b.dataset.n || null);
