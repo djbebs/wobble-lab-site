@@ -76,7 +76,7 @@
   /* Every card in the dashboard is built by one of these five functions. */
 
   function kpiCard(container, label, valueId, sparkId) {
-    var card = el("div", "card");
+    var card = el("div", "card kpi-card");
     var lab = el("div", "stat-label"); lab.textContent = label;
     var val = el("div", "stat-value"); val.id = valueId; val.textContent = "–";
     var spark = el("canvas", "stat-spark"); spark.id = sparkId;
