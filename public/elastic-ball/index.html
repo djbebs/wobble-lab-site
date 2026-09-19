@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Elastic Ball Physics Simulation | Wobble Lab</title>
+<meta name="description" content="An interactive demonstration of an almost perfectly elastic gel ball with nearly no damping between bounces.">
+<link rel="canonical" href="https://wobblelab.example/elastic-ball/">
+<meta name="robots" content="index,follow">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wobble Lab">
+<meta property="og:title" content="Elastic Ball Physics Simulation | Wobble Lab">
+<meta property="og:description" content="An interactive demonstration of an almost perfectly elastic gel ball with nearly no damping between bounces.">
+<meta property="og:url" content="https://wobblelab.example/elastic-ball/">
+<meta property="og:image" content="https://wobblelab.example/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/site.css">
+<script src="/assets/analytics.js"></script>
+<script id="adsense-loader" async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1855350767840503" crossorigin="anonymous"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "/assets/vendor/three.webgpu.js",
+    "three/webgpu": "/assets/vendor/three.webgpu.js",
+    "three/tsl": "/assets/vendor/three.tsl.js"
+  }
+}
+</script>
+<link rel="modulepreload" href="/assets/vendor/three.webgpu.js">
+<link rel="modulepreload" href="/assets/softbody.js">
+<script type="module" src="/assets/jelly.js?variant=elastic-ball"></script>
+</head>
+<body class="has-stage">
+<a class="skip" href="#main">Skip to content</a>
+<header class="bar">
+  <a class="brand" href="/">Wobble Lab</a>
+  <nav aria-label="Principal">
+      <a href="/">Home</a>
+      <a href="/experiments/" aria-current="page">Experiments</a>
+      <a href="/science/">Science</a>
+      <a href="/about/">About</a>
+  </nav>
+</header>
+<main id="main">
+
+<div class="stage" id="stage">
+  <div id="overlay">
+    <div class="row">
+      <div>
+        <p class="caps">Material study &nbsp;/&nbsp; <span id="studyid">No. 002</span></p>
+        <h2>Elastic<br><em>&amp; Bright.</em></h2>
+      </div>
+      <div id="live"><span id="dot"></span><span class="caps" id="backend">booting</span></div>
+    </div>
+  </div>
+
+  <div id="charge" aria-hidden="true">
+    <span class="caps" id="chargelabel">Keep hold</span>
+    <div id="chargetrack"><div id="chargefill"></div></div>
+  </div>
+
+  <button id="tab" aria-label="Show controls">Specimen</button>
+
+  <div id="panel">
+    <h3>The specimen</h3>
+    <div class="field">
+      <div class="lab"><span class="caps">Flavour</span></div>
+      <div id="flavours">
+        <button data-f="0" aria-pressed="true">Honey</button>
+        <button data-f="1" aria-pressed="false">Berry</button>
+        <button data-f="2" aria-pressed="false">Mint</button>
+        <button data-f="3" aria-pressed="false">Plum</button>
+      </div>
+    </div>
+    <div class="field">
+      <div class="lab"><span class="caps">Name</span></div>
+      <div id="names">
+        <button data-n="" aria-pressed="true">None</button>
+        <button data-n="Steven" aria-pressed="false">Steven</button>
+        <button data-n="Karen" aria-pressed="false">Karen</button>
+      </div>
+    </div>
+    <div class="field">
+      <div class="lab"><span class="caps">Elasticity</span><span class="val" id="vFirm">0.34</span></div>
+      <input id="firm" type="range" min="0" max="1" step=".01" value=".34">
+    </div>
+    <div class="field">
+      <div class="lab"><span class="caps">Energy retention</span><span class="val" id="vDamp">0.02</span></div>
+      <input id="damp" type="range" min="0" max="1" step=".01" value="0">
+    </div>
+    <button class="pbtn" id="nudge">Give it a nudge</button>
+    <button class="pbtn ghost" id="reset">Reset the specimen</button>
+    <div id="zoomrow">
+      <button id="zout" aria-label="Zoom out">&minus;</button>
+      <span class="caps">Zoom</span>
+      <button id="zin" aria-label="Zoom in">+</button>
+    </div>
+  </div>
+
+  <div id="fallback" hidden>
+    <div>
+      <p class="caps">Could not start</p>
+      <p>The simulation did not load. It needs WebGPU or WebGL2, and runs in current versions of Chrome, Edge, Firefox and Safari on desktop and mobile.</p>
+      <p>The <a href="/science/">articles</a> explain the physics it is modelling, and need no GPU at all.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+addEventListener("load", function () {
+  setTimeout(function () {
+    if (window.__jellyReady) return;
+    var f = document.getElementById("fallback"), s = document.getElementById("stage"),
+        b = document.getElementById("backend");
+    if (f) f.hidden = false;
+    if (s) s.classList.add("dead");
+    if (b) b.textContent = "unavailable";
+  }, 9000);
+});
+</script>
+
+<noscript>
+  <div class="wrap measure" style="padding:40px 0">
+    <p class="caps">JavaScript required</p>
+    <p>The simulation is solved live in your browser, so it needs JavaScript. The <a href="/science/">articles</a> are plain text and work without it.</p>
+  </div>
+</noscript>
+
+<aside class="adzone" data-ad-zone hidden aria-label="Advertisement">
+  <span class="caps">Advertisement</span>
+  <div class="slot" data-ad-slot></div>
+</aside>
+
+<section>
+  <div class="wrap measure">
+    <p class="kicker">How to use it</p>
+    <h1>A gel that never seems to settle.</h1>
+    <p class="lead">Grab the ball, pull it aside and let go. This demonstration keeps almost all of its energy from one bounce to the next, so the wobble rings on far longer than a real gel could.</p>
+
+    <h2>What it is modelling</h2>
+    <p>The ball uses the same pressure, shape and shear constraints as the Jelly specimen. The difference is damping: it is set almost to zero, with a high restitution at the floor. That makes this an intentionally unreal material study. No real gel behaves this way.</p>
+
+    <h2>What to notice</h2>
+    <p>Firmness changes how quickly the ball deforms and returns to shape. Energy retention changes how long the bounce continues. In this preset, the response is bright, fast and almost lossless.</p>
+
+    <h2>Read on</h2>
+    <p>Compare it with <a href="/jelly/">the viscoelastic jelly</a>, then read <a href="/science/wobble/">why jelly wobbles</a> for the physics behind the difference.</p>
+  </div>
+</section>
+
+</main>
+<footer class="bar foot">
+  <div>
+    <a href="/privacy/">Privacy</a>
+    <a href="/cookies/">Cookies</a>
+    <a href="/contact/">Contact</a>
+  </div>
+  <div class="muted">Interactive physics in the browser. Made in Switzerland.</div>
+</footer>
+<script type="module" src="/assets/ads.js"></script>
+</body>
+</html>

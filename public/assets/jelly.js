@@ -4,6 +4,25 @@ import { SoftBody, shapes } from "/assets/softbody.js";
 import { createJellyMaterial } from "/assets/jelly-shader.js";
 
 const $ = id => document.getElementById(id);
+const ELASTIC_MODE = location.pathname.startsWith("/elastic-ball/");
+const ELASTIC_PRESET = {
+  shineIntensity: 1.8,
+  rimStrength: 1.4,
+  absorptionStrength: 0.15,
+  glowIntensity: 1.2,
+  glowDecay: 0.0,
+  translucency: 0.9,
+  stressEffectStrength: 0.3
+};
+const ELASTIC_PHYSICS = {
+  damping: 0.02,
+  restitution: 0.95,
+  stiffness: 1.4,
+  wobbleFrequency: 1.3,
+  wobbleDecay: 0.05
+};
+const ELASTIC_RETENTION = 1 - ELASTIC_PHYSICS.damping / 120;
+const EVENT_PREFIX = ELASTIC_MODE ? "Elastic Ball" : "Jelly";
 function fail(e) {
   console.error(e);
   const box = $("fallback");
@@ -111,8 +130,15 @@ try {
 /* ---------- the body ---------- */
 const FLOOR_Y = -0.50;
 const body = new SoftBody({
-  shape: shapes.roundedBox({ x: 1.45, y: .42, z: 1.05, radius: .32 }),
-  rings: 26, segments: 44, floorY: FLOOR_Y
+  shape: ELASTIC_MODE ? shapes.sphere(1.0, .98) : shapes.roundedBox({ x: 1.45, y: .42, z: 1.05, radius: .32 }),
+  rings: 26, segments: 44, floorY: FLOOR_Y,
+  dropHeight: ELASTIC_MODE ? 1.25 : .55,
+  damping: ELASTIC_MODE ? ELASTIC_RETENTION : .9955,
+  restitution: ELASTIC_MODE ? ELASTIC_PHYSICS.restitution : .3,
+  stiffness: ELASTIC_MODE ? ELASTIC_PHYSICS.stiffness : 1,
+  wobbleFrequency: ELASTIC_MODE ? ELASTIC_PHYSICS.wobbleFrequency : undefined,
+  wobbleDecay: ELASTIC_MODE ? ELASTIC_PHYSICS.wobbleDecay : undefined,
+  ripple: ELASTIC_MODE ? 0 : .016
 });
 
 const geo = new THREE.BufferGeometry();
@@ -125,7 +151,8 @@ geo.computeVertexNormals();
 const jellyMaterial = createJellyMaterial({
   isWebGPU: renderer.backend?.isWebGPUBackend === true,
   vertexCount: body.count,
-  restPositions: body.positions
+  restPositions: body.positions,
+  preset: ELASTIC_MODE ? ELASTIC_PRESET : undefined
 });
 const mat = jellyMaterial.material;
 const jelly = new THREE.Mesh(geo, mat);
@@ -179,7 +206,7 @@ renderer.domElement.addEventListener("pointerdown", e => {
   if (!hit) return;
   const handle = body.grab(hit.point);
   if (!handle) return;
-  sendEvent("Jelly Click");
+  sendEvent(EVENT_PREFIX + " Click");
   const plane = new THREE.Plane();
   plane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(new THREE.Vector3()), hit.point);
   handles.set(e.pointerId, { handle, plane, target: hit.point.clone(), origin: hit.point.clone() });
@@ -212,12 +239,12 @@ addEventListener("blur", () => release());
 /* ---------- panel ---------- */
 const lerp = (a, b, t) => a + (b - a) * t;
 function applyFirmness(v) {
-  body.options.shapeMatch = lerp(.003, .05, v * v);   // master softness knob
-  body.options.stiffness  = lerp(.45, 1.5, v);
+  body.options.shapeMatch = ELASTIC_MODE ? lerp(.02, .08, v * v) : lerp(.003, .05, v);
+  body.options.stiffness  = ELASTIC_MODE ? ELASTIC_PHYSICS.stiffness : lerp(.45, 1.5, v);
   $("vFirm").textContent = v.toFixed(2);
 }
 function applyDamping(v) {
-  body.options.damping = lerp(.9990, .9840, v);      // low slider = long lazy wobble
+  body.options.damping = ELASTIC_MODE ? lerp(ELASTIC_RETENTION, 1 - .015 / 120, v) : lerp(.9990, .9840, v);
   $("vDamp").textContent = v.toFixed(2);
 }
 $("firm").oninput = e => applyFirmness(+e.target.value);
@@ -275,7 +302,8 @@ new ResizeObserver(resize).observe(app);
 let last = performance.now();
 
 renderer.setAnimationLoop(now => {
-  const dt = (now - last) / 1000; last = now;
+  const rawDt = (now - last) / 1000; last = now;
+  const dt = ELASTIC_MODE ? Math.max(0, Math.min(.1, rawDt)) : rawDt;
   body.step(dt);
   sync(dt);
   placeCamera();
@@ -392,11 +420,11 @@ function trackMotion(dt) {
   keSmoothed += (body.kineticEnergy() - keSmoothed) * KE_SMOOTH;
   if (!wobbling && keSmoothed > MOTION_ON) {
     wobbling = true; restFor = 0;
-    sendEvent("Jelly Oscillation", { energy: keSmoothed });
+    sendEvent(EVENT_PREFIX + " Oscillation", { energy: keSmoothed });
   } else if (wobbling) {
     if (keSmoothed < MOTION_OFF) {
       restFor += dt;
-      if (restFor > REST_HOLD) { wobbling = false; sendEvent("Jelly Rest"); }
+      if (restFor > REST_HOLD) { wobbling = false; sendEvent(EVENT_PREFIX + " Rest"); }
     } else restFor = 0;
   }
 }

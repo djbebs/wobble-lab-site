@@ -110,12 +110,14 @@ fn jelly_fragment(
   absorption: vec3<f32>, key_direction: vec3<f32>, key_color: vec3<f32>,
   fill_direction: vec3<f32>, fill_color: vec3<f32>, back_direction: vec3<f32>,
   back_color: vec3<f32>, ambient_color: vec3<f32>, roughness: f32, ior: f32,
-  absorption_strength: f32, thickness: f32, internal_glow: f32
+  absorption_strength: f32, thickness: f32, internal_glow: f32,
+  shine_intensity: f32, rim_strength: f32, translucency: f32,
+  glow_intensity: f32, glow_decay: f32, stress_effect_strength: f32
 ) -> vec4<f32> {
   let v = normalize(view_direction);
   let geometric_normal = normalize(normal);
   let tangent_hint = normalize(cross(geometric_normal, vec3<f32>(0.17, 1.0, 0.11)));
-  let n = normalize(geometric_normal + tangent_hint * ((stress - 0.5) * 0.026));
+  let n = normalize(geometric_normal + tangent_hint * ((stress - 0.5) * stress_effect_strength));
   let key = normalize(key_direction);
   let fill = normalize(fill_direction);
   let back = normalize(back_direction);
@@ -128,19 +130,20 @@ fn jelly_fragment(
   let f0 = vec3<f32>(f0_scalar);
 
   var surface = ambient_color * base_color * (0.28 + transmittance * 0.24);
-  surface += jelly_light(n, v, key, key_color, base_color, roughness, f0);
-  surface += jelly_light(n, v, fill, fill_color, base_color, roughness, f0);
-  surface += jelly_light(n, v, back, back_color * 0.34, base_color, roughness, f0);
+  surface += jelly_light(n, v, key, key_color, base_color, roughness, f0) * shine_intensity;
+  surface += jelly_light(n, v, fill, fill_color, base_color, roughness, f0) * shine_intensity;
+  surface += jelly_light(n, v, back, back_color * 0.34, base_color, roughness, f0) * shine_intensity;
 
   let key_diffusion = pow(jelly_saturate(dot(v, normalize(-key + n * 0.38))), 2.25);
   let back_diffusion = pow(jelly_saturate(dot(v, normalize(-back + n * 0.24))), 1.75);
   let diffusion_profile = (key_diffusion * 0.38 + back_diffusion) * (0.42 + path_length * 0.82);
   let subsurface = subsurface_color * (key_color * key_diffusion + back_color * back_diffusion) *
-    diffusion_profile * transmittance;
+    diffusion_profile * transmittance * translucency;
 
   let animated_glow = 0.94 + sin(time * 0.8 + world_position.y * 3.0) * 0.06;
-  let glow = subsurface_color * internal_glow * (0.34 + stress * 0.66) * animated_glow;
-  let rim = jelly_fresnel_schlick(ndotv, f0) * key_color * pow(edge, 3.0) * 0.42;
+  let glow = subsurface_color * internal_glow * glow_intensity * exp(-glow_decay * time) *
+    (0.34 + stress * 0.66) * animated_glow;
+  let rim = jelly_fresnel_schlick(ndotv, f0) * key_color * pow(edge, 3.0) * rim_strength;
   return vec4<f32>(surface + subsurface + glow + rim, 1.0);
 }`, [saturateWGSL, fresnelSchlickWGSL, jellyLightWGSL]);
 
@@ -155,7 +158,7 @@ function makeFallbackMaterial(flavour) {
   });
 }
 
-function makeWebGPUMaterial(vertexCount) {
+function makeWebGPUMaterial(vertexCount, preset = {}) {
   const jellyGroup = uniformGroup("jelly");
   const flavour = JELLY_FLAVOURS[0];
 
@@ -165,9 +168,15 @@ function makeWebGPUMaterial(vertexCount) {
     absorption: uniform(flavour.absorption.clone(), "vec3").setName("jellyAbsorption").setGroup(jellyGroup),
     roughness: uniform(.14, "float").setName("jellyRoughness").setGroup(jellyGroup),
     ior: uniform(1.45, "float").setName("jellyIOR").setGroup(jellyGroup),
-    absorptionStrength: uniform(1.12, "float").setName("jellyAbsorptionStrength").setGroup(jellyGroup),
+    absorptionStrength: uniform(preset.absorptionStrength ?? 1.12, "float").setName("jellyAbsorptionStrength").setGroup(jellyGroup),
     thickness: uniform(.84, "float").setName("jellyThickness").setGroup(jellyGroup),
     internalGlow: uniform(.045, "float").setName("jellyInternalGlow").setGroup(jellyGroup),
+    shineIntensity: uniform(preset.shineIntensity ?? 1, "float").setName("jellyShineIntensity").setGroup(jellyGroup),
+    rimStrength: uniform(preset.rimStrength ?? .42, "float").setName("jellyRimStrength").setGroup(jellyGroup),
+    translucency: uniform(preset.translucency ?? 1, "float").setName("jellyTranslucency").setGroup(jellyGroup),
+    glowIntensity: uniform(preset.glowIntensity ?? 1, "float").setName("jellyGlowIntensity").setGroup(jellyGroup),
+    glowDecay: uniform(preset.glowDecay ?? 0, "float").setName("jellyGlowDecay").setGroup(jellyGroup),
+    stressEffectStrength: uniform(preset.stressEffectStrength ?? .026, "float").setName("jellyStressEffectStrength").setGroup(jellyGroup),
     time: uniform(0, "float").setName("jellyTime").setGroup(jellyGroup),
     keyDirection: uniform(new THREE.Vector3(-2.2, 4.2, 2.6).normalize(), "vec3").setName("jellyKeyDirection").setGroup(jellyGroup),
     keyColor: uniform(new THREE.Color(0xffffff).multiplyScalar(1.8), "color").setName("jellyKeyColor").setGroup(jellyGroup),
@@ -205,13 +214,19 @@ function makeWebGPUMaterial(vertexCount) {
     ior: state.ior,
     absorption_strength: state.absorptionStrength,
     thickness: state.thickness,
-    internal_glow: state.internalGlow
+    internal_glow: state.internalGlow,
+    shine_intensity: state.shineIntensity,
+    rim_strength: state.rimStrength,
+    translucency: state.translucency,
+    glow_intensity: state.glowIntensity,
+    glow_decay: state.glowDecay,
+    stress_effect_strength: state.stressEffectStrength
   });
 
   return { material, state, stressAttribute };
 }
 
-export function createJellyMaterial({ isWebGPU, vertexCount, restPositions }) {
+export function createJellyMaterial({ isWebGPU, vertexCount, restPositions, preset }) {
   if (!isWebGPU) {
     const material = makeFallbackMaterial(JELLY_FLAVOURS[0]);
     return {
@@ -228,7 +243,7 @@ export function createJellyMaterial({ isWebGPU, vertexCount, restPositions }) {
     };
   }
 
-  const { material, state, stressAttribute } = makeWebGPUMaterial(vertexCount);
+  const { material, state, stressAttribute } = makeWebGPUMaterial(vertexCount, preset);
   const rest = new Float32Array(restPositions);
   const stress = stressAttribute.array;
   let elapsed = 0;
