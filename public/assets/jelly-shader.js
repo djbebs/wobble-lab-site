@@ -23,27 +23,48 @@ import {
 
 export const JELLY_FLAVOURS = [
   {
-    id: "berry", baseColor: "#C03B7A", rimColor: "#FF8ACF", glowColor: "#FF4FA8",
+    id: "berry", baseColor: "#C03B7A", rimColor: "#FF8ACF", glowColor: "#FF4FA8", translucency: .75,
     base: 0xC03B7A, subsurface: 0xC03B7A, attenuation: 0x8f2458, distance: 2.2,
     absorption: new THREE.Vector3(.24, 1.06, .86)
   },
   {
-    id: "mint", baseColor: "#4CCFB2", rimColor: "#9AF5E0", glowColor: "#5FFFE0",
+    id: "mint", baseColor: "#4CCFB2", rimColor: "#9AF5E0", glowColor: "#5FFFE0", translucency: .85,
     base: 0x4CCFB2, subsurface: 0x4CCFB2, attenuation: 0x168f79, distance: 2.4,
     absorption: new THREE.Vector3(.78, .20, .60)
   },
   {
-    id: "plum", baseColor: "#6A3BAA", rimColor: "#B78CFF", glowColor: "#8F4FFF",
+    id: "plum", baseColor: "#6A3BAA", rimColor: "#B78CFF", glowColor: "#8F4FFF", translucency: .70,
     base: 0x6A3BAA, subsurface: 0x6A3BAA, attenuation: 0x47247f, distance: 2.3,
     absorption: new THREE.Vector3(.62, .94, .19)
   }
 ];
+export const DEFAULT_FLAVOUR = 1; // Mint
 
+/* Name presets: no colours. Shine/rim/glow are the absolute values fed to the
+   shader. `sliders` are the Firmness/Damping slider positions (0..1) that
+   jelly.js applies when the name is picked: one pair per experiment, so there
+   are four independent presets. Jelly's damping slider adds damping as it
+   rises; the ball's "energy retention" slider adds retention. */
 export const JELLY_NAME_PRESETS = {
-  none: { shineIntensity: 1, glowIntensity: 1, rimStrength: 1 },
-  steven: { shineIntensity: 1.2, glowIntensity: 1.1, rimStrength: 1.0 },
-  karen: { shineIntensity: 1.4, glowIntensity: 1.3, rimStrength: 1.2 }
+  steven: {
+    shineIntensity: 2.2, rimStrength: 1.1, glowIntensity: 1.0,
+    sliders: { jelly: { firmness: .55, damping: .40 }, ball: { firmness: .55, damping: 0 } }
+  },
+  karen: {
+    shineIntensity: .5, rimStrength: 1.8, glowIntensity: 1.6,
+    sliders: { jelly: { firmness: .18, damping: .12 }, ball: { firmness: .18, damping: .60 } }
+  }
 };
+export const DEFAULT_NAME = "steven";
+
+/* finalPreset = merge(flavourPreset, namePreset). The flavour owns colours and
+   translucency; the name owns shine/rim/glow and the physics boosts. Both the
+   jelly and the ball go through this one function. */
+export function mergePreset(flavourIndex, nameKey) {
+  const flavour = JELLY_FLAVOURS[flavourIndex] || JELLY_FLAVOURS[DEFAULT_FLAVOUR];
+  const name = JELLY_NAME_PRESETS[nameKey] || JELLY_NAME_PRESETS[DEFAULT_NAME];
+  return { flavour, translucency: flavour.translucency, ...name };
+}
 
 /* WGSL vertex stage: a future compute pass can replace `stressField` without
    changing this material. The current CPU mirror is deliberately tiny: physics
@@ -97,7 +118,7 @@ fn jelly_geometry_smith(n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, roughness: f32
 const jellyLightWGSL = wgslFn(/* wgsl */`
 fn jelly_light(
   n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, light_color: vec3<f32>,
-  base_color: vec3<f32>, roughness: f32, f0: vec3<f32>
+  base_color: vec3<f32>, roughness: f32, f0: vec3<f32>, shine: f32
 ) -> vec3<f32> {
   let h = normalize(v + l);
   let ndotl = jelly_saturate(dot(n, l));
@@ -105,7 +126,7 @@ fn jelly_light(
   let specular = jelly_distribution_ggx(n, h, roughness) * jelly_geometry_smith(n, v, l, roughness) *
     jelly_fresnel_schlick(jelly_saturate(dot(h, v)), f0) / max(4.0 * ndotv * ndotl, 0.0001);
   let diffuse = (vec3<f32>(1.0) - jelly_fresnel_schlick(ndotv, f0)) * base_color / 3.14159265;
-  return (diffuse + specular) * light_color * ndotl;
+  return (diffuse + specular * shine * shine) * light_color * ndotl;
 }`, [saturateWGSL, fresnelSchlickWGSL, distributionGGXWGSL, geometrySmithWGSL]);
 
 const jellyFragmentWGSL = wgslFn(/* wgsl */`
@@ -136,9 +157,9 @@ fn jelly_fragment(
   let f0 = vec3<f32>(f0_scalar);
 
   var surface = ambient_color * base_color * (0.28 + transmittance * 0.24);
-  surface += jelly_light(n, v, key, key_color, base_color, roughness, f0) * shine_intensity;
-  surface += jelly_light(n, v, fill, fill_color, base_color, roughness, f0) * shine_intensity;
-  surface += jelly_light(n, v, back, back_color * 0.34, base_color, roughness, f0) * shine_intensity;
+  surface += jelly_light(n, v, key, key_color, base_color, roughness, f0, shine_intensity);
+  surface += jelly_light(n, v, fill, fill_color, base_color, roughness, f0, shine_intensity);
+  surface += jelly_light(n, v, back, back_color * 0.34, base_color, roughness, f0, shine_intensity);
 
   let key_diffusion = pow(jelly_saturate(dot(v, normalize(-key + n * 0.38))), 2.25);
   let back_diffusion = pow(jelly_saturate(dot(v, normalize(-back + n * 0.24))), 1.75);
@@ -148,8 +169,10 @@ fn jelly_fragment(
 
   let animated_glow = 0.94 + sin(time * 0.8 + world_position.y * 3.0) * 0.06;
   let glow = glow_color * internal_glow * glow_intensity * exp(-glow_decay * time) *
-    (0.34 + stress * 0.66) * animated_glow;
-  let rim = jelly_fresnel_schlick(ndotv, f0) * rim_color * pow(edge, 3.0) * rim_strength;
+    (0.34 + stress * 0.66) * animated_glow +
+    glow_color * glow_intensity * 0.05 * (0.5 + edge * 0.5) * exp(-glow_decay * time);
+  let rim = (jelly_fresnel_schlick(ndotv, f0) * pow(edge, 3.0) + vec3<f32>(0.22 * pow(edge, 4.0))) *
+    rim_color * rim_strength;
   return vec4<f32>(surface + subsurface + glow + rim, 1.0);
 }`, [saturateWGSL, fresnelSchlickWGSL, jellyLightWGSL]);
 
@@ -166,7 +189,7 @@ function makeFallbackMaterial(flavour) {
 
 function makeWebGPUMaterial(vertexCount, preset = {}) {
   const jellyGroup = uniformGroup("jelly");
-  const flavour = JELLY_FLAVOURS[1];
+  const { flavour, ...initial } = mergePreset(DEFAULT_FLAVOUR, DEFAULT_NAME);
 
   const state = {
     baseColor: uniform(new THREE.Color(flavour.base), "color").setName("jellyBaseColor").setGroup(jellyGroup),
@@ -179,10 +202,10 @@ function makeWebGPUMaterial(vertexCount, preset = {}) {
     absorptionStrength: uniform(preset.absorptionStrength ?? 1.12, "float").setName("jellyAbsorptionStrength").setGroup(jellyGroup),
     thickness: uniform(.84, "float").setName("jellyThickness").setGroup(jellyGroup),
     internalGlow: uniform(.045, "float").setName("jellyInternalGlow").setGroup(jellyGroup),
-    shineIntensity: uniform(preset.shineIntensity ?? 1, "float").setName("jellyShineIntensity").setGroup(jellyGroup),
-    rimStrength: uniform(preset.rimStrength ?? .42, "float").setName("jellyRimStrength").setGroup(jellyGroup),
-    translucency: uniform(preset.translucency ?? 1, "float").setName("jellyTranslucency").setGroup(jellyGroup),
-    glowIntensity: uniform(preset.glowIntensity ?? 1, "float").setName("jellyGlowIntensity").setGroup(jellyGroup),
+    shineIntensity: uniform(initial.shineIntensity, "float").setName("jellyShineIntensity").setGroup(jellyGroup),
+    rimStrength: uniform(initial.rimStrength, "float").setName("jellyRimStrength").setGroup(jellyGroup),
+    translucency: uniform(initial.translucency, "float").setName("jellyTranslucency").setGroup(jellyGroup),
+    glowIntensity: uniform(initial.glowIntensity, "float").setName("jellyGlowIntensity").setGroup(jellyGroup),
     glowDecay: uniform(preset.glowDecay ?? 0, "float").setName("jellyGlowDecay").setGroup(jellyGroup),
     stressEffectStrength: uniform(preset.stressEffectStrength ?? .026, "float").setName("jellyStressEffectStrength").setGroup(jellyGroup),
     time: uniform(0, "float").setName("jellyTime").setGroup(jellyGroup),
@@ -233,16 +256,16 @@ function makeWebGPUMaterial(vertexCount, preset = {}) {
     stress_effect_strength: state.stressEffectStrength
   });
 
-  return { material, state, stressAttribute };
+  return { material, state, stressAttribute, jellyGroup };
 }
 
 export function createJellyMaterial({ isWebGPU, vertexCount, restPositions, preset }) {
   if (!isWebGPU) {
-    const material = makeFallbackMaterial(JELLY_FLAVOURS[1]);
+    const material = makeFallbackMaterial(JELLY_FLAVOURS[DEFAULT_FLAVOUR]);
     return {
       material,
       setFlavour(index) {
-        const flavour = JELLY_FLAVOURS[index];
+        const { flavour } = mergePreset(index, DEFAULT_NAME);
         material.color.setHex(flavour.base);
         material.attenuationColor.setHex(flavour.attenuation);
         material.attenuationDistance = flavour.distance;
@@ -255,35 +278,44 @@ export function createJellyMaterial({ isWebGPU, vertexCount, restPositions, pres
     };
   }
 
-  const { material, state, stressAttribute } = makeWebGPUMaterial(vertexCount, preset);
+  const { material, state, stressAttribute, jellyGroup } = makeWebGPUMaterial(vertexCount, preset);
   const rest = new Float32Array(restPositions);
   const stress = stressAttribute.array;
   let elapsed = 0;
 
+  let flavourIndex = DEFAULT_FLAVOUR, nameKey = DEFAULT_NAME;
+  // Single write path: every change re-merges flavour + name and writes all uniforms.
+  function applyFinal() {
+    const final = mergePreset(flavourIndex, nameKey);
+    const f = final.flavour;
+    state.baseColor.value.set(f.baseColor);
+    state.subsurfaceColor.value.set(f.baseColor);
+    state.absorption.value.copy(f.absorption);
+    state.rimColor.value.set(f.rimColor);
+    state.glowColor.value.set(f.glowColor);
+    state.translucency.value = final.translucency;
+    state.shineIntensity.value = final.shineIntensity;
+    state.glowIntensity.value = final.glowIntensity;
+    state.rimStrength.value = final.rimStrength;
+    // matte names also widen the highlight lobe (never tighter than the base 0.14)
+    state.roughness.value = Math.min(.34, Math.max(.14, .14 / Math.pow(final.shineIntensity, .6)));
+  }
+
   return {
     material,
-    setFlavour(index) {
-      const flavour = JELLY_FLAVOURS[index];
-      state.baseColor.value.setHex(flavour.base);
-      state.subsurfaceColor.value.setHex(flavour.subsurface);
-      state.absorption.value.copy(flavour.absorption);
-      state.rimColor.value.set(flavour.rimColor);
-      state.glowColor.value.set(flavour.glowColor);
-    },
-    setNamePreset(name) {
-      const namePreset = JELLY_NAME_PRESETS[name] || JELLY_NAME_PRESETS.none;
-      state.shineIntensity.value = (preset?.shineIntensity ?? 1) * namePreset.shineIntensity;
-      state.glowIntensity.value = (preset?.glowIntensity ?? 1) * namePreset.glowIntensity;
-      state.rimStrength.value = (preset?.rimStrength ?? .42) * namePreset.rimStrength;
-    },
-    setAppearance(index, name = "none") {
-      this.setFlavour(index);
-      this.setNamePreset(name);
+    setFlavour(index) { flavourIndex = index; applyFinal(); },
+    setNamePreset(name) { nameKey = name; applyFinal(); },
+    setAppearance(index, name = DEFAULT_NAME) {
+      flavourIndex = index; nameKey = name;
+      applyFinal();
     },
     setInternalGlow(intensity) { state.internalGlow.value = intensity; },
     update(positions, dt) {
       elapsed += Math.min(dt || 0, .1);
       state.time.value = elapsed;
+      // Custom uniform groups are only re-uploaded when their version changes;
+      // without this every uniform write after the first frame is ignored.
+      jellyGroup.needsUpdate = true;
       for (let i = 0; i < vertexCount; i++) {
         const p = i * 3;
         stress[i] = Math.min(1, Math.hypot(

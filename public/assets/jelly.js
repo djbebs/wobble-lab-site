@@ -1,17 +1,13 @@
 import * as THREE from "three";
 import { WebGPURenderer } from "three/webgpu";
 import { SoftBody, shapes } from "/assets/softbody.js";
-import { createJellyMaterial } from "/assets/jelly-shader.js?variant=colors-v3";
+import { createJellyMaterial, mergePreset, DEFAULT_FLAVOUR, DEFAULT_NAME } from "/assets/jelly-shader.js?variant=names-v6";
 
 const $ = id => document.getElementById(id);
 const ELASTIC_MODE = location.pathname.startsWith("/elastic-ball/");
 const ELASTIC_PRESET = {
-  shineIntensity: 1.8,
-  rimStrength: 1.4,
-  absorptionStrength: 0.15,
-  glowIntensity: 1.2,
+  absorptionStrength: 0.6,
   glowDecay: 0.0,
-  translucency: 0.9,
   stressEffectStrength: 0.3
 };
 const ELASTIC_PHYSICS = {
@@ -154,8 +150,8 @@ const jellyMaterial = createJellyMaterial({
   restPositions: body.positions,
   preset: ELASTIC_MODE ? ELASTIC_PRESET : undefined
 });
-let selectedFlavour = 1; // Mint is the default palette entry.
-let selectedName = "none";
+let selectedFlavour = DEFAULT_FLAVOUR; // Mint
+let selectedName = DEFAULT_NAME;       // Steven
 const mat = jellyMaterial.material;
 const jelly = new THREE.Mesh(geo, mat);
 jelly.frustumCulled = false;
@@ -251,8 +247,6 @@ function applyDamping(v) {
 }
 $("firm").oninput = e => applyFirmness(+e.target.value);
 $("damp").oninput = e => applyDamping(+e.target.value);
-applyFirmness(+$("firm").value);
-applyDamping(+$("damp").value);
 
 function applyAppearance() {
   jellyMaterial.setAppearance(selectedFlavour, selectedName);
@@ -328,14 +322,19 @@ const NAME_SLOT = $("studyid");
 let specimenName = null;
 function setName(n) {
   specimenName = n;
-  selectedName = n ? n.toLowerCase() : "none";
-  NAME_SLOT.textContent = n ? n : "No. 001";
+  selectedName = n.toLowerCase();
+  NAME_SLOT.textContent = n;
   for (const b of document.querySelectorAll("#names button"))
-    b.setAttribute("aria-pressed", String(b.dataset.n === (n || "")));
+    b.setAttribute("aria-pressed", String(b.dataset.n === n));
   jellyMaterial.setNamePreset(selectedName);
+  const s = mergePreset(selectedFlavour, selectedName).sliders[ELASTIC_MODE ? "ball" : "jelly"];
+  $("firm").value = s.firmness; $("damp").value = s.damping;
+  applyFirmness(s.firmness);
+  applyDamping(s.damping);
 }
 for (const b of document.querySelectorAll("#names button"))
-  b.onclick = () => setName(b.dataset.n || null);
+  b.onclick = () => setName(b.dataset.n);
+setName(DEFAULT_NAME[0].toUpperCase() + DEFAULT_NAME.slice(1));
 
 /* --- haptics ---------------------------------------------------------------
    navigator.vibrate takes a duration, not an intensity, so stretch is mapped to
