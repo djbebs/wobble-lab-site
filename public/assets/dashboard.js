@@ -564,25 +564,42 @@
 
   /* ---------------------------------------------------------------- load */
 
+  function setDashboardState(message, isError) {
+    var status = document.getElementById("statusLine");
+    var loading = document.getElementById("loadingBar");
+    if (status) {
+      status.textContent = message;
+      status.classList.toggle("error", Boolean(isError));
+    }
+    if (loading) loading.hidden = !message || Boolean(isError);
+  }
+
   async function loadDashboard(key) {
-    var analytics = await fetchAnalytics(key); // all rollups, newest first
-    var recent = analytics.slice(0, currentDays).slice().reverse(); // oldest -> newest for charts
-    var funnel = await fetchFunnel(key, currentDays);
-    var perf = await fetchPerformance(key, currentDays);
-    var raw = await fetchRaw(key);
+    setDashboardState("Loading " + currentDays + " days of data");
+    try {
+      var analytics = await fetchAnalytics(key); // all rollups, newest first
+      var recent = analytics.slice(0, currentDays).slice().reverse(); // oldest -> newest for charts
+      var funnel = await fetchFunnel(key, currentDays);
+      var perf = await fetchPerformance(key, currentDays);
+      var raw = await fetchRaw(key);
 
-    lastRecent = recent;
-    populateSourceFilter(recent);
+      lastRecent = recent;
+      populateSourceFilter(recent);
 
-    renderKPIs(recent, funnel, perf);
-    renderMap(recent);
-    renderTimeSeries(recent, perf);
-    renderFunnelPanel(funnel);
-    renderSources(recent);
-    renderTopPages(recent);
-    renderJellyPhysics(recent, perf);
-    renderPerformancePanel(perf);
-    renderRaw(raw);
+      renderKPIs(recent, funnel, perf);
+      renderMap(recent);
+      renderTimeSeries(recent, perf);
+      renderFunnelPanel(funnel);
+      renderSources(recent);
+      renderTopPages(recent);
+      renderJellyPhysics(recent, perf);
+      renderPerformancePanel(perf);
+      renderRaw(raw);
+      setDashboardState("Updated just now");
+    } catch (error) {
+      setDashboardState("Data could not be loaded. Check the key or try again.", true);
+      throw error;
+    }
   }
 
   /* -------------------------------------------------------------- unlock */
@@ -594,14 +611,20 @@
   }
 
   async function tryUnlock(key) {
-    try { await fetchAnalytics(key); }
-    catch (e) { return false; }
-    sessionStorage.setItem(KEY_STORAGE, key);
-    document.getElementById("unlock").classList.add("hidden");
-    document.getElementById("app").classList.remove("hidden");
-    setActiveRangeButton();
-    await loadDashboard(key);
-    return true;
+    try {
+      await fetchAnalytics(key);
+      sessionStorage.setItem(KEY_STORAGE, key);
+      document.getElementById("unlock").classList.add("hidden");
+      document.getElementById("app").classList.remove("hidden");
+      setActiveRangeButton();
+      await loadDashboard(key);
+      return true;
+    } catch (e) {
+      sessionStorage.removeItem(KEY_STORAGE);
+      document.getElementById("unlock").classList.remove("hidden");
+      document.getElementById("app").classList.add("hidden");
+      return false;
+    }
   }
 
   buildLayout();
@@ -624,7 +647,10 @@
       currentDays = Number(btn.dataset.days);
       setActiveRangeButton();
       var key = sessionStorage.getItem(KEY_STORAGE);
-      if (key) await loadDashboard(key);
+      if (key) {
+        try { await loadDashboard(key); }
+        catch (e) { /* loadDashboard has already shown the recoverable error */ }
+      }
     });
   });
 
