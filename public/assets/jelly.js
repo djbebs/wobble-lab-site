@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { WebGPURenderer } from "three/webgpu";
 import { SoftBody, shapes } from "/assets/softbody.js";
+import { createJellyMaterial } from "/assets/jelly-shader.js";
 
 const $ = id => document.getElementById(id);
 function fail(e) {
@@ -16,7 +17,9 @@ addEventListener("unhandledrejection", e => fail(e.reason));
 /* ---------- renderer ---------- */
 const app = $("stage");
 const renderer = new WebGPURenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const MAX_PIXEL_RATIO = Math.min(devicePixelRatio, 2);
+let renderPixelRatio = MAX_PIXEL_RATIO;
+renderer.setPixelRatio(renderPixelRatio);
 renderer.setSize(app.clientWidth, app.clientHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.15;
@@ -117,22 +120,14 @@ geo.setAttribute("position", new THREE.BufferAttribute(body.positions, 3));
 geo.setIndex(new THREE.BufferAttribute(body.indices, 1));
 geo.computeVertexNormals();
 
-// attenuationDistance was 1.1 on a body only 0.84 thick, so light died before
-// it crossed: opaque. Pushing it past the thickness is what makes it gummy.
-const FLAVOURS = [
-  { color: 0xffca6e, atten: 0xd97a18, dist: 2.6 },   // honey
-  { color: 0xff6a9c, atten: 0xc41f55, dist: 2.2 },   // berry
-  { color: 0x86f0c6, atten: 0x16a578, dist: 2.4 },   // mint
-  { color: 0xc79bf0, atten: 0x5c2a91, dist: 2.3 }    // plum
-];
-const mat = new THREE.MeshPhysicalMaterial({
-  color: FLAVOURS[0].color, roughness: .085, metalness: 0,
-  transmission: 1, thickness: .62, ior: 1.36, dispersion: .035,
-  attenuationColor: new THREE.Color(FLAVOURS[0].atten),
-  attenuationDistance: FLAVOURS[0].dist,
-  clearcoat: 1, clearcoatRoughness: .06,
-  emissive: new THREE.Color(FLAVOURS[0].color), emissiveIntensity: .045
+// WebGPU uses the custom WGSL material. WebGL2 retains this physical fallback
+// through the same controller, so the interactive specimen still works there.
+const jellyMaterial = createJellyMaterial({
+  isWebGPU: renderer.backend?.isWebGPUBackend === true,
+  vertexCount: body.count,
+  restPositions: body.positions
 });
+const mat = jellyMaterial.material;
 const jelly = new THREE.Mesh(geo, mat);
 jelly.frustumCulled = false;
 jelly.renderOrder = 1;
@@ -155,10 +150,11 @@ const blob = new THREE.Mesh(
 blob.rotation.x = -Math.PI / 2; blob.position.y = FLOOR_Y + .004;
 blob.renderOrder = -2; scene.add(blob);
 
-function sync() {
+function sync(dt = 0) {
   geo.attributes.position.needsUpdate = true;
   geo.computeVertexNormals();
   geo.computeBoundingSphere();          // keeps raycasting valid while it deforms
+  jellyMaterial.update(body.positions, dt);
   const { centroid: c, radius, minY } = body.bounds();
   const lift = Math.max(0, minY - FLOOR_Y);
   const s = radius * (.92 + lift * .5);   // tucked inside the silhouette, never rimming it
@@ -231,11 +227,7 @@ applyDamping(+$("damp").value);
 
 for (const b of document.querySelectorAll("#flavours button")) b.onclick = () => {
   for (const o of document.querySelectorAll("#flavours button")) o.setAttribute("aria-pressed", String(o === b));
-  const f = FLAVOURS[+b.dataset.f];
-  mat.color.setHex(f.color);
-  mat.attenuationColor.setHex(f.atten);
-  mat.attenuationDistance = f.dist;
-  mat.emissive.setHex(f.color);
+  jellyMaterial.setFlavour(+b.dataset.f);
 };
 $("nudge").onclick = () => {
   body.impulse({ x: (Math.random() - .5) * 1.9, y: 2.4, z: (Math.random() - .5) * 1.9 }, .5);
@@ -285,7 +277,7 @@ let last = performance.now();
 renderer.setAnimationLoop(now => {
   const dt = (now - last) / 1000; last = now;
   body.step(dt);
-  sync();
+  sync(dt);
   placeCamera();
   tick(dt);
   renderer.render(scene, camera);
@@ -346,7 +338,13 @@ const STAGES = [
   [.88, "Ready"]
 ];
 let streak = 0, megaLeft = 0, megaShape = null, lastLabel = "", ticked = 0;
-const BASE_EMISSIVE = mat.emissiveIntensity;
+const BASE_EMISSIVE = .045;
+let internalGlow = BASE_EMISSIVE;
+
+function setInternalGlow(intensity) {
+  internalGlow = intensity;
+  jellyMaterial.setInternalGlow(intensity);
+}
 
 function label(txt) {
   if (txt === lastLabel) return;
@@ -364,7 +362,7 @@ function megaOn() {
   charge.classList.add("mega");
   charge.classList.remove("ready");
   label("Mega stretch");
-  mat.emissiveIntensity = 1.1;                 // flash, decays over the next second
+  setInternalGlow(1.1);                         // flash, decays over the next second
   if (HAPTICS) navigator.vibrate([22, 55, 22, 55, 60]);
 }
 
@@ -374,7 +372,7 @@ function megaOff() {
   if (megaShape !== null) { body.options.shapeMatch = megaShape; megaShape = null; }
   charge.classList.remove("mega", "ready", "on");
   chargeFill.style.width = "0%";
-  mat.emissiveIntensity = BASE_EMISSIVE;
+  setInternalGlow(BASE_EMISSIVE);
   lastLabel = "";
 }
 
@@ -412,11 +410,40 @@ function trackMotion(dt) {
    above and has no Safari support. Fine for comparing relative performance
    across pages/sessions, not for isolating GPU-only time. */
 let fpsSmoothed = 60, frameMsSmoothed = 16;
+let overBudgetFor = 0, headroomFor = 0;
+const MOBILE_RENDERER = matchMedia("(max-width: 720px), (pointer: coarse)");
+
+function tuneMobileResolution(dt) {
+  if (!MOBILE_RENDERER.matches || dt <= 0) return;
+
+  if (dt > 1 / 48) {
+    overBudgetFor += dt;
+    headroomFor = 0;
+  } else if (dt < 1 / 58) {
+    headroomFor += dt;
+    overBudgetFor = 0;
+  } else {
+    overBudgetFor = 0;
+    headroomFor = 0;
+  }
+
+  if (overBudgetFor > 1.5 && renderPixelRatio > 1) {
+    renderPixelRatio = Math.max(1, renderPixelRatio - .25);
+    renderer.setPixelRatio(renderPixelRatio);
+    overBudgetFor = 0;
+  } else if (headroomFor > 6 && renderPixelRatio < MAX_PIXEL_RATIO) {
+    renderPixelRatio = Math.min(MAX_PIXEL_RATIO, renderPixelRatio + .25);
+    renderer.setPixelRatio(renderPixelRatio);
+    headroomFor = 0;
+  }
+}
+
 function trackPerformance(dt) {
   if (dt <= 0) return;
   const fps = 1 / dt;
   fpsSmoothed += (fps - fpsSmoothed) * .05;
   frameMsSmoothed += (dt * 1000 - frameMsSmoothed) * .05;
+  tuneMobileResolution(dt);
 }
 setInterval(() => {
   if (document.visibilityState === "visible") {
@@ -434,7 +461,7 @@ function tick(dt) {
     const left = Math.max(0, megaLeft / MEGA_LASTS);
     chargeFill.style.width = (left * 100).toFixed(1) + "%";
     // the flash fades back to a steady glow
-    mat.emissiveIntensity = Math.max(.42, mat.emissiveIntensity - dt * 1.6);
+    setInternalGlow(Math.max(.42, internalGlow - dt * 1.6));
     if (megaLeft <= 0) megaOff();
     return;
   }
@@ -452,7 +479,7 @@ function tick(dt) {
     if (t >= STAGES[i][0]) { label(STAGES[i][1]); break; }
 
   // the specimen lights up from within as it charges
-  mat.emissiveIntensity = BASE_EMISSIVE + t * t * .26;
+  setInternalGlow(BASE_EMISSIVE + t * t * .26);
 
   if (HAPTICS && handles.size > 0) {
     if (t >= .62 && ticked < 1) { ticked = 1; navigator.vibrate(10); }
